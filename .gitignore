@@ -22,3 +22,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+# executables
+experiments/golang/rtsimple/client/client
+experiments/golang/rtsimple/server/server
