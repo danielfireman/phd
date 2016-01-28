@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -22,6 +23,8 @@ var (
 	mem  = flag.String("memory", "1g", "Memory allocated in the container.")
 )
 
+const instanceNamePrefix = "restserver_go"
+
 func main() {
 	flag.Parse()
 	log.Println(*dfTmpl)
@@ -31,13 +34,13 @@ func main() {
 	}
 	log.Println("Dockerfile created: ", dockerfile, "\n####\n")
 
-	image, err := buildServerImage(dockerfile, *goVersion)
+	image, err := buildImage(dockerfile, *goVersion)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("Server image created: ", image, "\n####\n")
 
-	errChan := startServer(image, *port, *cpus, *mem, *goVersion)
+	errChan := runImage(image, *port, *cpus, *mem, *goVersion)
 	if err := <-errChan; err != nil {
 		log.Fatal(err)
 	}
@@ -49,7 +52,16 @@ func createDockerfile(tmplPath, goVersion string, port int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Docker only likes --file full paths.
 	path := filepath.Join(filepath.Dir(tmplPath), fmt.Sprintf("Dockerfile_%s", goVersion))
+	if !strings.HasPrefix(path, "/") {
+		v, ok := os.LookupEnv("PWD")
+		if !ok {
+			return "", fmt.Errorf("Envvar PWD not set.")
+		}
+		path = filepath.Join(v, tmplPath)
+	}
+
 	dockerfile, err := os.Create(path)
 	if err != nil {
 		return "", err
@@ -68,11 +80,10 @@ func createDockerfile(tmplPath, goVersion string, port int) (string, error) {
 	return path, nil
 }
 
-func buildServerImage(dockerfile, goVersion string) (string, error) {
-	name := fmt.Sprintf("danielfireman/phd-experiments:restserver_go%s", goVersion)
+func buildImage(dockerfile, goVersion string) (string, error) {
+	name := fmt.Sprintf("danielfireman/phd-experiments:%s%s", instanceNamePrefix, goVersion)
 	args := []string{
 		"build",
-
 		fmt.Sprintf("--tag=%s", name),
 		fmt.Sprintf("--file=%s", dockerfile),
 		"--rm",
@@ -85,10 +96,11 @@ func buildServerImage(dockerfile, goVersion string) (string, error) {
 	return name, c.Run()
 }
 
-func startServer(name string, port, cpus int, mem, goVersion string) <-chan error {
+func runImage(name string, port, cpus int, mem, goVersion string) <-chan error {
 	errChan := make(chan error)
 	args := []string{
 		"run",
+		fmt.Sprintf("--name=%s%s", instanceNamePrefix, goVersion),
 		fmt.Sprintf("--publish=%d:%d", port, port),
 		fmt.Sprintf("--memory=%s", mem),
 		fmt.Sprintf("--cpuset-cpus=%d", cpus),
