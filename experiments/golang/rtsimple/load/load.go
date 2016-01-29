@@ -34,7 +34,7 @@ func (m *IntMetric) sample(s int64) {
 	m.NumSamples++
 	if s > m.Max {
 		m.Max = s
-	} else if s < m.Min {
+	} else if s < m.Min || m.Min == 0 {
 		m.Min = s
 	}
 }
@@ -51,6 +51,7 @@ func req(url string) result {
 	s := time.Now()
 	resp, err := http.Get(url)
 	if err == nil {
+		defer resp.Body.Close()
 		code = resp.StatusCode
 	}
 	return result{
@@ -65,13 +66,13 @@ func (g *Generator) Run() *Report {
 	start := time.Now()
 
 	wg := sync.WaitGroup{}
+	wg.Add(g.N)
 	c := make(chan struct{})
 
 	// Kicking off the actual load generators.
 	for i := 0; i < g.ConcurrencyLevel; i++ {
 		go func() {
 			for range c {
-				wg.Add(1)
 				g.results <- req(g.URL)
 				wg.Done()
 			}
@@ -83,13 +84,14 @@ func (g *Generator) Run() *Report {
 	// Closing token channel and waiting for the load generation to be finish.
 	close(c)
 	wg.Wait()
+	close(g.results)
 
 	// Building report.
 	d := time.Now().Sub(start)
 	report := &Report{
 		Duration:     d,
 		LatencyNanos: IntMetric{},
-		QPS:          d.Seconds() / float64(g.N),
+		QPS:          float64(g.N) / d.Seconds(),
 	}
 	for r := range g.results {
 		switch {
