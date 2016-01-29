@@ -1,6 +1,7 @@
 package load
 
 import (
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -13,9 +14,10 @@ type result struct {
 }
 
 type Generator struct {
-	N                int
 	ConcurrencyLevel int
 	URL              string
+	MaxQPS           int
+	Duration         time.Duration
 	results          chan result
 }
 
@@ -42,14 +44,14 @@ func (m *IntMetric) sample(s int64) {
 type Report struct {
 	LatencyNanos IntMetric
 	Duration     time.Duration
-	NumErrors    int
+	NumErrors    int64
 	QPS          float64
 }
 
-func req(url string) result {
+func req(c http.Client, url string) result {
 	var code int
 	s := time.Now()
-	resp, err := http.Get(url)
+	resp, err := c.Get(url)
 	if err == nil {
 		defer resp.Body.Close()
 		code = resp.StatusCode
@@ -62,27 +64,32 @@ func req(url string) result {
 }
 
 func (g *Generator) Run() *Report {
-	g.results = make(chan result, g.N)
+	log.Println("Starting")
+	g.results = make(chan result, g.ConcurrencyLevel*1000)
 	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(g.ConcurrencyLevel)
 
-	wg := sync.WaitGroup{}
-	wg.Add(g.N)
-	c := make(chan struct{})
-
-	// Kicking off the actual load generators.
+	// Triggering generators.
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
 	for i := 0; i < g.ConcurrencyLevel; i++ {
+		share := float64(g.MaxQPS) / float64(g.ConcurrencyLevel)
 		go func() {
-			for range c {
-				g.results <- req(g.URL)
-				wg.Done()
+			f := time.Tick(g.Duration)
+			t := time.Tick(time.Duration(1e6/(share)) * time.Microsecond)
+			for {
+				select {
+				case <-t:
+					g.results <- req(client, g.URL)
+				case <-f:
+					wg.Done()
+					return
+				}
 			}
 		}()
 	}
-	for i := 0; i < g.N; i++ {
-		c <- struct{}{}
-	}
-	// Closing token channel and waiting for the load generation to be finish.
-	close(c)
 	wg.Wait()
 	close(g.results)
 
@@ -91,7 +98,6 @@ func (g *Generator) Run() *Report {
 	report := &Report{
 		Duration:     d,
 		LatencyNanos: IntMetric{},
-		QPS:          float64(g.N) / d.Seconds(),
 	}
 	for r := range g.results {
 		switch {
@@ -101,5 +107,6 @@ func (g *Generator) Run() *Report {
 			report.LatencyNanos.sample(r.duration.Nanoseconds())
 		}
 	}
+	report.QPS = float64(report.NumErrors+report.LatencyNanos.NumSamples) / d.Seconds()
 	return report
 }

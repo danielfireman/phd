@@ -23,14 +23,14 @@ func BuildImage(dockerfile, name string) error {
 	return c.Run()
 }
 
-func StartContainer(iName, cName string, port, cpus int, mem string) error {
+func StartContainer(iName, cName string, port int, cpuset, mem string) error {
 	args := []string{
 		"run",
 		"--rm",
 		fmt.Sprintf("--name=%s", cName),
 		fmt.Sprintf("--publish=%d:%d", port, port),
 		fmt.Sprintf("--memory=%s", mem),
-		fmt.Sprintf("--cpuset-cpus=%d", cpus),
+		fmt.Sprintf("--cpuset-cpus=%s", cpuset),
 		iName,
 	}
 	log.Printf("Running: docker %s\n", args)

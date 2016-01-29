@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 var (
@@ -17,17 +18,18 @@ var (
 )
 
 func cpu(w http.ResponseWriter, r *http.Request) {
-	mem := getIntParam(r, "mem")
-	cpu := getIntParam(r, "cpu")
-	m := make([]byte, mem, mem)
-	for i := 0; i < cpu; i++ {
-		m[0] = byte(math.Sqrt(float64(i)))
+	m := allocateMem(getIntParam(r, "mem"))
+	for i := 0; i < getIntParam(r, "cpu"); i++ {
+		math.Sqrt(float64(m[0]))
+		time.Sleep(100 * time.Nanosecond)
 	}
-	w.WriteHeader(http.StatusOK)
+}
+
+func allocateMem(b int) []byte {
+	return make([]byte, b, b)
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 }
 
 func quit(w http.ResponseWriter, r *http.Request) {

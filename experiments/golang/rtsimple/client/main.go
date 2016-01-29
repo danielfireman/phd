@@ -20,13 +20,14 @@ var (
 	baseImage = flag.String("base_image", "1.5.3", "Base image to run the server. Example: golang:1.5.3-alpine")
 	port      = flag.Int("port", 8999, "Port to run/expose service. Example: '8999'")
 
-	loadN                = flag.Int("load_n", 5000, "Number of requests to generate.")
-	loadConcurrencyLevel = flag.Int("load_c", 10, "Number of concurrent workers generating load.")
+	loadConcurrencyLevel = flag.Int("load_c", 2, "Number of concurrent workers generating load.")
 	loadOps              = flag.Int("load_ops", 1000000, "Numer of operations done per request.")
 	loadMem              = flag.Int("load_mem", 1024, "Amount of memory allocated per request (in bytes).")
+	loadMaxQPS           = flag.Int("load_maxqps", 1000, "Maximum QPS impressed on the server. Zero means infinite.")
+	loadDuration         = flag.Duration("load_duration", 0, "Duration of load. Example: 1m")
 
-	cpus       = flag.Int("cpus", 1, "Number of CPUs used by the server container.")
-	gomaxprocs = flag.Int("gomaxprocs", 1, "Number of max processors used by golang runtime. Example: 2")
+	cpuset     = flag.String("cpuset", "0", "Number of CPUs used by the server container.")
+	gomaxprocs = flag.Int("gomaxprocs", 4, "Number of max processors used by golang runtime. Example: 2")
 	mem        = flag.String("memory", "1g", "Memory allocated in the container.")
 )
 
@@ -77,7 +78,7 @@ func main() {
 	// Starting container.
 	cErrChan := make(chan error)
 	go func() {
-		cErrChan <- docker.StartContainer(iName, cName, *port, *cpus, *mem)
+		cErrChan <- docker.StartContainer(iName, cName, *port, *cpuset, *mem)
 	}()
 	if err := waitHealth(serverURI(*port, "ping"), cErrChan); err != nil {
 		log.Fatal(err)
@@ -86,11 +87,12 @@ func main() {
 
 	// Stressing service.
 	g := load.Generator{
-		N:                *loadN,
 		ConcurrencyLevel: *loadConcurrencyLevel,
-		URL:              serverURI(*port, fmt.Sprintf("work&cpu=%d?mem=%d", *loadOps, *loadMem)),
+		URL:              serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", *loadOps, *loadMem)),
+		MaxQPS:           *loadMaxQPS,
+		Duration:         *loadDuration,
 	}
-	log.Printf("Start stressing server. #req:%d concurrencyLevel:%d url:%s", g.N, g.ConcurrencyLevel, g.URL)
+	log.Printf("Start stressing server. #duration:%v concurrencyLevel:%d url:%s", g.Duration, g.ConcurrencyLevel, g.URL)
 	log.Printf("%+v", g.Run())
 	log.Println("Finish stressing server\n####\n")
 
