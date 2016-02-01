@@ -17,7 +17,7 @@ func TestRun(t *testing.T) {
 		ConcurrencyLevel: 2,
 	}
 	r := g.Run()
-	if r.QPS <= g.ConcurrencyLevel {
+	if r.QPS <= float64(g.ConcurrencyLevel) {
 		t.Fatal("qps got:%d want:>=%d", r.QPS, g.ConcurrencyLevel)
 	}
 }

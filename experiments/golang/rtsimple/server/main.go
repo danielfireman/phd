@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	_ "expvar"
 )
 
 var (

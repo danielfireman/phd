@@ -20,7 +20,7 @@ var (
 	baseImage = flag.String("base_image", "1.5.3", "Base image to run the server. Example: golang:1.5.3-alpine")
 	port      = flag.Int("port", 8999, "Port to run/expose service. Example: '8999'")
 
-	loadConcurrencyLevel = flag.Int("load_c", 2, "Number of concurrent workers generating load.")
+	loadConcurrencyLevel = flag.Int("load_c", 10, "Number of concurrent workers generating load.")
 	loadOps              = flag.Int("load_ops", 1000000, "Numer of operations done per request.")
 	loadMem              = flag.Int("load_mem", 1024, "Amount of memory allocated per request (in bytes).")
 	loadMaxQPS           = flag.Int("load_maxqps", 1000, "Maximum QPS impressed on the server. Zero means infinite.")
@@ -88,11 +88,12 @@ func main() {
 	// Stressing service.
 	g := load.Generator{
 		ConcurrencyLevel: *loadConcurrencyLevel,
-		URL:              serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", *loadOps, *loadMem)),
+		StressURL:        serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", *loadOps, *loadMem)),
+		ExpVarsURL:       serverURI(*port, "debug/vars"),
 		MaxQPS:           *loadMaxQPS,
 		Duration:         *loadDuration,
 	}
-	log.Printf("Start stressing server. #duration:%v concurrencyLevel:%d url:%s", g.Duration, g.ConcurrencyLevel, g.URL)
+	log.Printf("Start stressing server. #duration:%v concurrencyLevel:%d url:%s", g.Duration, g.ConcurrencyLevel, g.StressURL)
 	log.Printf("%+v", g.Run())
 	log.Println("Finish stressing server\n####\n")
 
