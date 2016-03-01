@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -8,11 +10,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
 	"github.com/danielfireman/phd/experiments/golang/rtsimple/docker"
 	"github.com/danielfireman/phd/experiments/golang/rtsimple/load"
+	"github.com/danielfireman/phd/experiments/golang/rtsimple/results"
 )
 
 var (
@@ -21,20 +25,31 @@ var (
 	port      = flag.Int("port", 8999, "Port to run/expose service. Example: '8999'")
 
 	loadConcurrencyLevel = flag.Int("load_c", 10, "Number of concurrent workers generating load.")
-	loadOps              = flag.Int("load_ops", 1000000, "Numer of operations done per request.")
-	loadMem              = flag.Int("load_mem", 1024, "Amount of memory allocated per request (in bytes).")
 	loadMaxQPS           = flag.Int("load_maxqps", 1000, "Maximum QPS impressed on the server. Zero means infinite.")
-	loadDuration         = flag.Duration("load_duration", 0, "Duration of load. Example: 1m")
+	loadOps              = flag.Int("load_ops", 1000, "Numer of operations done per request.")
+	loadMem              = flag.Int("load_mem", 1024, "Amount of memory allocated per request (in bytes).")
+	loadDuration         = flag.Duration("load_duration", 5*time.Second, "Duration of load. Example: 1m")
+	loadPattern          = flag.String("load_pattern", "[{\"mem\":1024,\"ops\":1000}]", "JSON Patter of the load.Ex: \"[{\"mem\":\"1024\",\"ops\":\"1000\"}]\"")
 
-	cpuset     = flag.String("cpuset", "0", "Number of CPUs used by the server container.")
-	gomaxprocs = flag.Int("gomaxprocs", 4, "Number of max processors used by golang runtime. Example: 2")
+	cpuset     = flag.String("cpuset", "", "Number of CPUs used by the server container.")
+	gomaxprocs = flag.Int("gomaxprocs", 0, "Number of max processors used by golang runtime. Example: 2")
 	mem        = flag.String("memory", "1g", "Memory allocated in the container.")
 )
 
 const instanceNamePrefix = "restserver_"
 
+type loadConfig struct {
+	Ops int `json:"ops"`
+	Mem int `json:"mem"`
+}
+
 func main() {
 	flag.Parse()
+
+	loadConf := []loadConfig{}
+	if err := json.NewDecoder(bytes.NewBuffer([]byte(*loadPattern))).Decode(&loadConf); err != nil {
+		log.Fatalf("[Stats.Inc] Problem decoding data: Pattern:%s Err:%q", *loadPattern, err)
+	}
 
 	exprID := stripChars(*baseImage, ":.-")
 
@@ -85,16 +100,30 @@ func main() {
 	}
 	log.Printf("Server is up, running and healthy: %s\n####\n", cName)
 
-	// Stressing service.
-	g := load.Generator{
-		ConcurrencyLevel: *loadConcurrencyLevel,
-		StressURL:        serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", *loadOps, *loadMem)),
-		ExpVarsURL:       serverURI(*port, "debug/vars"),
-		MaxQPS:           *loadMaxQPS,
-		Duration:         *loadDuration,
+	startTime := time.Now()
+	cLevel := int(float32(*loadConcurrencyLevel) / float32(len(loadConf)))
+	maxQPS := int(float32(*loadMaxQPS) / float32(len(loadConf)))
+	resultsChan := make(chan load.RequestResult, *loadConcurrencyLevel*1000)
+	var wg sync.WaitGroup
+	for _, conf := range loadConf {
+		wg.Add(1)
+		go func(c loadConfig) {
+			log.Printf("Start stress: Configuration: %+v", c)
+			defer wg.Done()
+			g := load.Generator{
+				ConcurrencyLevel: cLevel,
+				StressURL:        serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", conf.Ops, conf.Mem)),
+				MaxQPS:           maxQPS,
+				Duration:         *loadDuration,
+			}
+			g.Run(resultsChan)
+		}(conf)
 	}
-	log.Printf("Start stressing server. #duration:%v concurrencyLevel:%d url:%s", g.Duration, g.ConcurrencyLevel, g.StressURL)
-	log.Printf("%+v", g.Run())
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+	resultSummary := results.Summarize(resultsChan, serverURI(*port, "debug/vars"), startTime)
 	log.Println("Finish stressing server\n####\n")
 
 	// Stopping container.
@@ -106,6 +135,9 @@ func main() {
 	if err := os.Remove(dockerfilePath); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("#### RESULTS ####\n")
+	log.Printf("%+v", resultSummary)
+	log.Println("\n########\n")
 	log.Println("Docker file successfully removed: ", dockerfilePath, "\n####\n")
 }
 

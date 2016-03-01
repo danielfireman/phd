@@ -30,9 +30,11 @@ func StartContainer(iName, cName string, port int, cpuset, mem string) error {
 		fmt.Sprintf("--name=%s", cName),
 		fmt.Sprintf("--publish=%d:%d", port, port),
 		fmt.Sprintf("--memory=%s", mem),
-		fmt.Sprintf("--cpuset-cpus=%s", cpuset),
-		iName,
 	}
+	if len(cpuset) > 0 {
+		args = append(args, fmt.Sprintf("--cpuset-cpus=%s", cpuset))
+	}
+	args = append(args, iName)
 	log.Printf("Running: docker %s\n", args)
 	c := exec.Command("docker", args...)
 	c.Stderr = os.Stderr
