@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pivotal-golang/bytefmt"
+
 	"github.com/danielfireman/phd/experiments/golang/rtsimple/docker"
 	"github.com/danielfireman/phd/experiments/golang/rtsimple/load"
 	"github.com/danielfireman/phd/experiments/golang/rtsimple/serverinfo"
@@ -45,8 +47,8 @@ type ExecutionSummary struct {
 }
 
 type loadConfig struct {
-	Ops int `json:"ops"`
-	Mem int `json:"mem"`
+	Ops int    `json:"ops"`
+	Mem string `json:"mem"`
 }
 
 func main() {
@@ -66,7 +68,11 @@ func main() {
 	}
 	var loadURLs []string
 	for _, c := range lc {
-		loadURLs = append(loadURLs, serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", c.Ops, c.Mem)))
+		b, err := bytefmt.ToBytes(c.Mem)
+		if err != nil {
+			log.Fatalf("Invalid load specification. Mem:%d Spec:%+v", c.Mem, c)
+		}
+		loadURLs = append(loadURLs, serverURI(*port, fmt.Sprintf("work?cpu=%d&mem=%d", c.Ops, b)))
 	}
 
 	exprID := stripChars(*baseImage, ":.-")

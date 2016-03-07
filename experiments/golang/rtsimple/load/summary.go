@@ -21,10 +21,11 @@ func (m *DurationMetric) sample(s time.Duration) {
 }
 
 type Summary struct {
-	Duration  time.Duration
-	NumErrors int64
-	QPS       float64
-	Latency   DurationMetric
+	Duration    time.Duration
+	DurationStr string
+	NumErrors   int64
+	QPS         float64
+	Latency     DurationMetric
 }
 
 func summarize(reqs <-chan RequestResult, start time.Time) *Summary {
@@ -38,6 +39,7 @@ func summarize(reqs <-chan RequestResult, start time.Time) *Summary {
 		}
 	}
 	results.Duration = time.Now().Sub(start)
+	results.DurationStr = results.Duration.String()
 	results.QPS = float64(results.NumErrors+results.Latency.NumSamples) / results.Duration.Seconds()
 	results.Latency.Avg = time.Duration(float64(results.Latency.Sum) / float64(results.Latency.NumSamples))
 	return results
