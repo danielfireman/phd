@@ -9,21 +9,19 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"time"
 
 	_ "expvar"
 )
 
 var (
 	port       = flag.Int("port", 8999, "Port to run/expose service. Example: 8999")
-	gomaxprocs = flag.Int("gomaxprocs", 1, "Number of max processors used by golang runtime. Example: 2")
+	gomaxprocs = flag.Int("gomaxprocs", 2, "Number of max processors used by golang runtime. Example: 2")
 )
 
 func cpu(w http.ResponseWriter, r *http.Request) {
 	m := allocateMem(getIntParam(r, "mem"))
 	for i := 0; i < getIntParam(r, "cpu"); i++ {
 		math.Sqrt(float64(m[0]))
-		time.Sleep(100 * time.Nanosecond)
 	}
 }
 
@@ -43,7 +41,6 @@ func main() {
 	flag.Parse()
 
 	runtime.GOMAXPROCS(*gomaxprocs)
-
 	fmt.Printf("Listening at http://localhost:%d\n", *port)
 	http.HandleFunc("/work", cpu)
 	http.HandleFunc("/ping", ping)

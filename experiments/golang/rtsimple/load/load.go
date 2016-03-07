@@ -6,11 +6,36 @@ import (
 	"time"
 )
 
-type Generator struct {
-	ConcurrencyLevel int
-	StressURL        string
-	MaxQPS           int
-	Duration         time.Duration
+type LoadPattern struct {
+	Ops            int `json:"ops"`
+	Mem            int `json:"mem"`
+	QueryFormatStr string
+}
+
+func Run(maxQPS, nWorkers int, duration time.Duration, loadURLs ...string) *Summary {
+	startTime := time.Now()
+	cLevel := int(float32(nWorkers) / float32(len(loadURLs)))
+	qps := int(float32(maxQPS) / float32(len(loadURLs)))
+	resultsChan := make(chan RequestResult, nWorkers*1000)
+	var wg sync.WaitGroup
+	for _, q := range loadURLs {
+		wg.Add(1)
+		go func(q string) {
+			defer wg.Done()
+			g := Generator{
+				ConcurrencyLevel: cLevel,
+				StressURL:        q,
+				MaxQPS:           qps,
+				Duration:         duration,
+			}
+			g.Run(resultsChan)
+		}(q)
+	}
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+	return summarize(resultsChan, startTime)
 }
 
 type RequestResult struct {
@@ -32,6 +57,13 @@ func req(c http.Client, url string) RequestResult {
 		Duration: time.Now().Sub(s),
 		Err:      err,
 	}
+}
+
+type Generator struct {
+	ConcurrencyLevel int
+	StressURL        string
+	MaxQPS           int
+	Duration         time.Duration
 }
 
 func (g *Generator) Run(results chan<- RequestResult) {
