@@ -7,6 +7,7 @@ _Nota:  Assumindo que os dados e a explicação sobre os campos já estão locai
 ---
 
 Primeira coisa que fizemos:
+
 * Curso de R: http://tryr.codeschool.com
 
 1. Criar um breve relatório que mostre um panorama dos dados considerados abaixo:
