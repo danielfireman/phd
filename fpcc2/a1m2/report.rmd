@@ -52,12 +52,9 @@ Representa o valor líquido do documento fiscal ou do documento que deu causa à
 
 ```{r}
 summary(despesasVoo$vlrLiquido)
-
-totDespesasVoo <- summarise(despesasVoo, total=sum(vlrLiquido))
-totDespesasVoo
 ```
 
-Podemos observar os nossos deputados gastaram mais de R$ 2M de reais em passagens aéreas, porém que média e mediana são próximas e num valor aparentemente razoável. Notemos também que existem outliers, os quais vamos investigar mais a frente. 
+Que nos mostra que média e mediana são próximas e num valor aparentemente razoável. Notemos também que existem outliers, os quais estudaremos em trabalhos futuros.
 
 Um ponto que chama atenção são os valores negativos. Estes valores significam que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado. Para simplificar essa análise, iremos descartar valores negativos.
 
@@ -65,9 +62,22 @@ Um ponto que chama atenção são os valores negativos. Estes valores significam
 despesasVoo <- filter(despesasVoo, despesasVoo$vlrLiquido > 0)
 ```
 
+Filtrados os valores negativos, observamos que os nossos deputados gastaram quase R$ 3M de reais em passagens aéreas e que esse valor constitui em torno de 11% do valor total despendido:
+
+```{r}
+totDespesasVoo <- summarise(despesasVoo, total=sum(vlrLiquido))
+totDespesasVoo
+
+totDespesas  <- d %>%
+  filter(d$vlrLiquido > 0) %>%
+  summarise(total=sum(vlrLiquido))
+
+1 - ((totDespesas - totDespesasVoo)/totDespesas)
+```
+
 ## Terceiros
 
-Uma vez que já temos um data.frame com passagens aéreas, podemos partir para o objeto principal dessa análise que são passagens aéreas compradas para terceiros. Nesse caso, se o campo txNomeParlamentar e o campo txPassageiro são diferentes. 
+Uma vez que já o conjunto de despesas referente a passagens aéreas, podemos partir para o objeto principal dessa análise que são passagens aéreas compradas para terceiros. Nesse caso, se o campo txNomeParlamentar e o campo txPassageiro são diferentes. 
 
 ```{r}
 despesasVooTerceiros <- filter(despesasVoo,
@@ -76,7 +86,7 @@ despesasVooTerceiros <- filter(despesasVoo,
 
 A função as.character foi necessária para que as colunas sejam comparadas como strings e não como categorias.
 
-Abaixo mostramos que esse tipo de despesa é relevante, uma vez que corresponde ~25% dos números e do valores totais das despesas com passagens aéreas:
+Abaixo mostramos que esse tipo de despesa é relevante, uma vez que corresponde ~25% da quantidade e do valores totais das despesas com passagens aéreas:
 
 ```{r}
 1 - ((nrow(despesasVoo) - nrow(despesasVooTerceiros))/nrow(despesasVoo))
@@ -88,4 +98,45 @@ totDespesasVooTerceiros
 1 - ((totDespesasVoo - totDespesasVooTerceiros)/totDespesasVoo)
 ```
 
-Uma vez mostrada a relevância da análise podemos olahr
+### Deputados que mais compraram passagens para terceiros
+
+Primeiros vamos dar uma olhadinha num resumo do conjunto de valores das passagens para terceiros:
+
+```{r}
+summary(despesasVooTerceiros$vlrLiquido)
+```
+
+Dando uma olhada mais de perto nos outliers vemos que no dia 17/03/2015 o deputado Rossoni comprou uma passagem para Curitiba para uma pessoa chamada Gerson Silva, pela bagatela de R$ 24,00:
+
+```{r}
+despesasVooTerceiros %>% select(datEmissao, txNomeParlamentar, sgPartido, txtPassageiro, txtTrecho, vlrLiquido) %>% filter(despesasVooTerceiros$vlrLiquido == 24.0)
+```
+
+Por outro lado ..
+```{r}
+despesasVooTerceiros %>% select(datEmissao, txNomeParlamentar, sgPartido, txtPassageiro, txtTrecho, vlrLiquido) %>% filter(despesasVooTerceiros$vlrLiquido > 4410.8)
+```
+
+
+
+```{r}
+topQtd <- despesasVooTerceiros %>%
+  count(txNomeParlamentar) %>%
+  arrange(desc(n)) %>%
+  head(n=5)
+topQtd
+
+1 - ((nrow(despesasVooTerceiros) - nrow(topQtd))/nrow(despesasVooTerceiros))
+
+topTotal <- despesasVooTerceiros %>%
+  group_by(txNomeParlamentar) %>%
+  summarise(total=sum(vlrLiquido)) %>%
+  arrange(desc(total)) %>%
+  head(n=5)
+topTotal
+
+sumTopTotal <- sum(topTotal$total)
+sumTopTotal
+
+1 - ((totDespesasVooTerceiros - sum(topTotal$total))/totDespesasVooTerceiros)
+```
