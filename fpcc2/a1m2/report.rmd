@@ -1,0 +1,91 @@
+---
+title: "FPCC2 - Atividade 1 Milestone 2"
+autor: "Daniel Fireman (@danielfireman@gmail.com)"
+---
+
+Daniel Fireman (danielfireman@gmail.com)
+
+## Compras de passagens aéreas para terceiros
+
+Este relatório tem como foco entender melhor as características das compras de passagens aéreas para terceiros.
+
+### Dados e bibliotecas utilizadas
+
+Foram analisados os dados de gastos de parlamentares entre Janeiro e Abril ed 2015. Estes dados foram disponibilizados site de transparência do congresso nacional e uma versão CSV por ser encontrada [aqui](https://drive.google.com/file/d/0B2rlaHwjOlZAc0JpNUtXLTZOT3M/view?usp=sharing)). Uma explicação dos campos incluídos no CSV pode ser encontrada [aqui](http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar).
+
+```{r}
+d <- read.csv("/home/danielfireman/phd/fpcc2/a1m2/AnoAtual.csv")
+```
+
+Para facilitar análise usamos a bilioteca [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html).
+
+```{r echo=TRUE, message=FALSE}
+library("dplyr")
+```
+
+### Campos de interesse
+
+Para entender melhor compras de passagens aereas precisamos entender melhor a semântica de alguns campos importantes para nossa análise. Em particular:
+
+* **txNomeParlamentar**
+
+Nome adotado pelo Parlamentar ao tomar posse do seu mandato.
+
+* **sgPartido**
+
+O seu conteúdo representa a sigla de um partido
+
+* **txtPassageiro**
+
+O conteúdo deste dado representa o nome do passageiro, quando o documento que deu causa à despesa se tratar de emissão de bilhete aéreo.
+
+O valor "-" é encontrado quando a despesa nao se refere a uma passagem aerea. Por exemplo, podemos notar que, no período considerado, os deputados gastaram em torno de 11% com passagens aéreas:
+
+```{r}
+despesasVoo <- filter(d, d$txtPassageiro != "-")
+1-(nrow(d)-nrow(despesasVoo))/nrow(d)
+```
+
+* **vlrLiquido**
+
+Representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. Vamos fazer uma rápida análise desse campo:
+
+```{r}
+summary(despesasVoo$vlrLiquido)
+
+totDespesasVoo <- summarise(despesasVoo, total=sum(vlrLiquido))
+totDespesasVoo
+```
+
+Podemos observar os nossos deputados gastaram mais de R$ 2M de reais em passagens aéreas, porém que média e mediana são próximas e num valor aparentemente razoável. Notemos também que existem outliers, os quais vamos investigar mais a frente. 
+
+Um ponto que chama atenção são os valores negativos. Estes valores significam que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado. Para simplificar essa análise, iremos descartar valores negativos.
+
+```{r echo=TRUE, message=FALSE}
+despesasVoo <- filter(despesasVoo, despesasVoo$vlrLiquido > 0)
+```
+
+## Terceiros
+
+Uma vez que já temos um data.frame com passagens aéreas, podemos partir para o objeto principal dessa análise que são passagens aéreas compradas para terceiros. Nesse caso, se o campo txNomeParlamentar e o campo txPassageiro são diferentes. 
+
+```{r}
+despesasVooTerceiros <- filter(despesasVoo,
+                               as.character(txtPassageiro) != as.character(txNomeParlamentar))
+```
+
+A função as.character foi necessária para que as colunas sejam comparadas como strings e não como categorias.
+
+Abaixo mostramos que esse tipo de despesa é relevante, uma vez que corresponde ~25% dos números e do valores totais das despesas com passagens aéreas:
+
+```{r}
+1 - ((nrow(despesasVoo) - nrow(despesasVooTerceiros))/nrow(despesasVoo))
+
+
+totDespesasVooTerceiros <- summarize(despesasVooTerceiros, total=sum(vlrLiquido))
+totDespesasVooTerceiros
+
+1 - ((totDespesasVoo - totDespesasVooTerceiros)/totDespesasVoo)
+```
+
+Uma vez mostrada a relevância da análise podemos olahr
