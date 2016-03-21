@@ -1,17 +1,15 @@
 ---
 title: "FPCC2 - Lab 1 Milestone 2"
 output: pdf_document
-autor: Daniel Fireman (@danielfireman@gmail.com)
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "March, 2016"
 ---
 
-Daniel Fireman (danielfireman@gmail.com)
-Março 2016
+# Compras de passagens aéreas para terceiros: Quem? Quanto?
 
-## Compras de passagens aéreas para terceiros
+Este relatório tem como objetivo principal entender melhor uma parte controversa dos gastos públicos: a compra de passagem para terceiros. Utilizando dados da transparência do congresso nacional do período entre Janeiro e Abril ed 2015, mostramos que a compra de passagens e, em particular, a compra de passagens para terceiros merecem nossa atenção. Apresentamos também uma visão geral dos gastos de cada deputado com esse tipo de passagem e mostramos alguns valores fora da norma. Por fim, focamos um pouco no deputado que mais gastou da su
 
-Este relatório tem como foco entender melhor as características das compras de passagens aéreas para terceiros.
-
-### Dados e bibliotecas utilizadas
+## Dados e bibliotecas utilizadas
 
 Foram analisados os dados de gastos de parlamentares entre Janeiro e Abril ed 2015. Estes dados foram disponibilizados site de transparência do congresso nacional e uma versão CSV por ser encontrada [aqui](https://drive.google.com/file/d/0B2rlaHwjOlZAc0JpNUtXLTZOT3M/view?usp=sharing)). Uma explicação dos campos incluídos no CSV pode ser encontrada [aqui](http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar).
 
@@ -19,14 +17,14 @@ Foram analisados os dados de gastos de parlamentares entre Janeiro e Abril ed 20
 d <- read.csv("/home/fireman/phd/fpcc2/a1m2/AnoAtual.csv")
 ```
 
-Para facilitar análise usamos as biliotecas [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html) e [ggplot2](https://cran.r-project.org/web/packages/ggplot2/index.html)
+Toda a análise foi feita usando a ferramenta [R](https://www.r-project.org/). Para facilitar análise usamos as biliotecas [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html) e [ggplot2](https://cran.r-project.org/web/packages/ggplot2/index.html)
 
 ```{r echo=TRUE, message=FALSE}
 library("dplyr")
 library("ggplot2")
 ```
 
-### Campos de interesse
+## Campos de interesse
 
 Para entender melhor compras de passagens aereas precisamos entender melhor a semântica de alguns campos importantes para nossa análise. Em particular:
 
@@ -38,7 +36,7 @@ Para entender melhor compras de passagens aereas precisamos entender melhor a se
 
 * **vlrLiquido**: Representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. 
 
-### Compras de Passagens Aéreas
+## Compras de Passagens Aéreas
 
 Essa seção tem como objetivo de mostrar o impacto que a compra de passagens aéreas tem no uso do dinheiro público por parlamentares. Iniciando as análises, mostramos o percentual de lançamentos relacionados a passagens aéreas:
 
@@ -83,7 +81,7 @@ totDespesas  <- d %>%
 paste(round((1 - ((totDespesas - totDespesasVoo)/totDespesas)) * 100, 2) , "%")
 ```
 
-### Passagens aéreas para terceiros
+## Os Terceiros
 
 Até aqui mostramos que passagens aéreas são um objeto relevante para análise, uma vez que representa uma fração significativa dos gastos totais da casa. Os gastos com passagens aéreas para terceiro se tornaram um assunto especial depois do [escândalo das passagens aéreas](https://pt.wikipedia.org/wiki/Escândalo_das_passagens_aéreas), onde ficou decidido que as passagens só poderão ser usadas pelo próprio deputado e em território nacional. O assessor que precisar viajar para representar um deputado poderá usufruir da cota, desde que seja autorizado pela terceira secretária da Mesa Diretora. 
 
@@ -92,7 +90,7 @@ despesasVooTerceiros <- filter(despesasVoo,
                                as.character(txtPassageiro) != as.character(txNomeParlamentar))
 ```
 
-#### Relevância
+### Relevância
 
 Vamos começar a análise mostrando o impacto que passagens para terceiros tem no total de passagens aéreas compradas:
 
@@ -115,7 +113,9 @@ paste("Quantidade de deputados que compraram passagens áreas para terceiros (DC
 paste("Percentual DCAT em relação a DCA", round((1 - ((qtdDeputados - qtdDeputadosVoosTerceiros)/qtdDeputados))*100,2), "%")
 ```
 
-#### Os notáveis
+Traduzindo para português, temos que 302 deputados (mais de 50% da bancada) usaram dinheiro público para comprar passagem para terceiros  (mantemos a ressalva de conseguir identificar os acessores). Essas compras totalizaram mais de R$ 700.000,00 em passagens para terceiros, o que representa mais de um quarto to total de passagens compradas. 
+
+### Os notáveis
 
 Abaixo mostramos o resumo dos gastos com despesas com passagens aéreas para terceiros:
 
@@ -156,7 +156,7 @@ ggplot(despesasVooTerceiros, aes(x = txNomeParlamentar, y = vlrLiquido)) +
   ylab("Gasto com passagens aéreas (R$)")
 ```
 
-#### Os mais gastadores
+### Os mais gastadores
 
 Abaixo listamos os 5 deputados que mais gastaram com passagens aéreas para terceiros. Mostramos também o total gasto por esses deputados com essas passagens e também o quanto esse total representa com relação ao total de passagens compradas e o total de passagens compradas para terceiros. 
 
