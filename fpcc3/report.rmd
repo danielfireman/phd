@@ -1,0 +1,35 @@
+---
+title: "FPCC 3 - Atividade 1"
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "Março 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Função
+
+Relembrando algumas definições apresentadas em [Um modelo algébrico](https://www.google.com/url?q=https://docs.google.com/viewer?a%3Dv%26pid%3Dexplorer%26chrome%3Dtrue%26srcid%3D0BxYU82vErc8xOGU4MmM1NjQtZGJhYy00MjVkLTg1OTgtNWI5OTQ2YTU1MjEy%26hl%3Den%26authkey%3DCNeLsv4L&sa=D&ust=1458582490682000&usg=AFQjCNH2B9iit30tQah3_ihNwbm5hj8aTw), temos:
+
+   * $D$ um conjunto de documentos
+   * $T \subseteq D$, um conjunto de treinamento e
+   * $E = D - T$, o conjunto de execução correspondente
+
+A atividade pede para supor que a função $qualidade(d, T)$ seja aproximada usando 2 segmentos lineares:
+
+   1. Cresce linearmente de 0 a 0.9 quando $\left\vert{T}\right\vert$ varia de 0 a 20% de $\left\vert{D}\right\vert$
+   2. Constante em 0.9 para $\left\vert{T}\right\vert$ maior que 20% de $\left\vert{D}\right\vert$
+
+Descrevendo matematicamente 
+
+$$
+qualidade(d, T) =
+\left\{
+  \begin{aligned}
+    4.5 \cdot \left\vert{D}\right\vert & \,\mid\, \left\vert{T}\right\vert \leq 0.2 \cdot \left\vert{D}\right\vert\  \\
+    0.9 & \,\mid\, \left\vert{T}\right\vert > 0.2 \cdot \left\vert{D}\right\vert
+  \end{aligned}
+\right.
+$$
