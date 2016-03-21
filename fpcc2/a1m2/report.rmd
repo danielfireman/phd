@@ -1,133 +1,166 @@
 ---
-title: "FPCC2 - Atividade 1 Milestone 2"
-autor: "Daniel Fireman (@danielfireman@gmail.com)"
+title: "FPCC2 - Lab 1 Milestone 2"
+output: pdf_document
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "March, 2016"
 ---
 
-Daniel Fireman (danielfireman@gmail.com)
+# Compras de passagens aéreas para terceiros: Quem? Quanto?
 
-## Compras de passagens aéreas para terceiros
+Este relatório tem como objetivo principal entender melhor uma parte controversa dos gastos públicos: a compra de passagem para terceiros. Utilizando dados da transparência do congresso nacional do período entre Janeiro e Abril ed 2015, mostramos que a compra de passagens e, em particular, a compra de passagens para terceiros merecem nossa atenção. Apresentamos também uma visão geral dos gastos de cada deputado com esse tipo de passagem e mostramos alguns valores fora da norma. Por fim, focamos um pouco no deputado que mais gastou da su
 
-Este relatório tem como foco entender melhor as características das compras de passagens aéreas para terceiros.
-
-### Dados e bibliotecas utilizadas
+## Dados e bibliotecas utilizadas
 
 Foram analisados os dados de gastos de parlamentares entre Janeiro e Abril ed 2015. Estes dados foram disponibilizados site de transparência do congresso nacional e uma versão CSV por ser encontrada [aqui](https://drive.google.com/file/d/0B2rlaHwjOlZAc0JpNUtXLTZOT3M/view?usp=sharing)). Uma explicação dos campos incluídos no CSV pode ser encontrada [aqui](http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar).
 
 ```{r}
-d <- read.csv("/home/danielfireman/phd/fpcc2/a1m2/AnoAtual.csv")
+d <- read.csv("/home/fireman/phd/fpcc2/a1m2/AnoAtual.csv")
 ```
 
-Para facilitar análise usamos a bilioteca [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html).
+Toda a análise foi feita usando a ferramenta [R](https://www.r-project.org/). Para facilitar análise usamos as biliotecas [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html) e [ggplot2](https://cran.r-project.org/web/packages/ggplot2/index.html)
 
 ```{r echo=TRUE, message=FALSE}
 library("dplyr")
+library("ggplot2")
 ```
 
-### Campos de interesse
+## Campos de interesse
 
 Para entender melhor compras de passagens aereas precisamos entender melhor a semântica de alguns campos importantes para nossa análise. Em particular:
 
-* **txNomeParlamentar**
+* **txNomeParlamentar**: Nome adotado pelo Parlamentar ao tomar posse do seu mandato.
 
-Nome adotado pelo Parlamentar ao tomar posse do seu mandato.
+* **sgPartido**: O seu conteúdo representa a sigla de um partido
 
-* **sgPartido**
+* **txtPassageiro**: O conteúdo deste dado representa o nome do passageiro, quando o documento que deu causa à despesa se tratar de emissão de bilhete aéreo. O valor "-" é encontrado quando a despesa nao se refere a uma passagem aerea.
 
-O seu conteúdo representa a sigla de um partido
+* **vlrLiquido**: Representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. 
 
-* **txtPassageiro**
+## Compras de Passagens Aéreas
 
-O conteúdo deste dado representa o nome do passageiro, quando o documento que deu causa à despesa se tratar de emissão de bilhete aéreo.
+Essa seção tem como objetivo de mostrar o impacto que a compra de passagens aéreas tem no uso do dinheiro público por parlamentares. Iniciando as análises, mostramos o percentual de lançamentos relacionados a passagens aéreas:
 
-O valor "-" é encontrado quando a despesa nao se refere a uma passagem aerea. Por exemplo, podemos notar que, no período considerado, os deputados gastaram em torno de 11% com passagens aéreas:
-
-```{r}
+```{r echo=FALSE}
 despesasVoo <- filter(d, d$txtPassageiro != "-")
-1-(nrow(d)-nrow(despesasVoo))/nrow(d)
+paste(round((1-(nrow(d)-nrow(despesasVoo))/nrow(d)) * 100, 2), "%")
 ```
 
-* **vlrLiquido**
+O próximo passo é começar a entender os montantes envolvidos nesses lançamentos:
 
-Representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. Vamos fazer uma rápida análise desse campo:
-
-```{r}
+```{r echo=FALSE}
 summary(despesasVoo$vlrLiquido)
 ```
 
-Que nos mostra que média e mediana são próximas e num valor aparentemente razoável. Notemos também que existem outliers, os quais estudaremos em trabalhos futuros.
+Que nos mostra que média e mediana dos valores são próximas e num valor aparentemente razoável. Um ponto que chama atenção são os valores negativos: estes valores significam que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado. Vamos deixar para entender melhor os outliers em trabalhos futuros.
 
-Um ponto que chama atenção são os valores negativos. Estes valores significam que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado. Para simplificar essa análise, iremos descartar valores negativos.
+Também é útil dar uma olhadinha em como esses valores são dispersos entre os parlamentares. No gáfico abaixo vemos que a maioria dos pontos vai até R$ 2.000,00, o que também me parece razoável:
 
-```{r echo=TRUE, message=FALSE}
-despesasVoo <- filter(despesasVoo, despesasVoo$vlrLiquido > 0)
+```{r echo=FALSE}
+ggplot(despesasVoo, aes(x = txNomeParlamentar, y = vlrLiquido / 1000)) +
+  geom_point(alpha = 0.2) +
+  theme_bw() +
+  theme(axis.text.x=element_blank()) +
+  xlab("Parlamentares") +
+  ylab("Gasto com passagens aéreas (milhares de R$)")
 ```
 
-Filtrados os valores negativos, observamos que os nossos deputados gastaram quase R$ 3M de reais em passagens aéreas e que esse valor constitui em torno de 11% do valor total despendido:
+Passando para os valores agregados, observamos o total gasto com passagens aéreas:
 
-```{r}
+```{r echo=FALSE}
 totDespesasVoo <- summarise(despesasVoo, total=sum(vlrLiquido))
-totDespesasVoo
+paste("R$",totDespesasVoo/1000000, " milhões")
+```
 
+E o percentual que esse valor constitui com relação ao montate total gasto pelos parlamentares no mesmo período:
+
+```{r echo=FALSE}
 totDespesas  <- d %>%
   filter(d$vlrLiquido > 0) %>%
   summarise(total=sum(vlrLiquido))
 
-1 - ((totDespesas - totDespesasVoo)/totDespesas)
+paste(round((1 - ((totDespesas - totDespesasVoo)/totDespesas)) * 100, 2) , "%")
 ```
 
-## Terceiros
+## Os Terceiros
 
-Uma vez que já o conjunto de despesas referente a passagens aéreas, podemos partir para o objeto principal dessa análise que são passagens aéreas compradas para terceiros. Nesse caso, se o campo txNomeParlamentar e o campo txPassageiro são diferentes. 
+Até aqui mostramos que passagens aéreas são um objeto relevante para análise, uma vez que representa uma fração significativa dos gastos totais da casa. Os gastos com passagens aéreas para terceiro se tornaram um assunto especial depois do [escândalo das passagens aéreas](https://pt.wikipedia.org/wiki/Escândalo_das_passagens_aéreas), onde ficou decidido que as passagens só poderão ser usadas pelo próprio deputado e em território nacional. O assessor que precisar viajar para representar um deputado poderá usufruir da cota, desde que seja autorizado pela terceira secretária da Mesa Diretora. 
 
-```{r}
+```{r echo=FALSE}
 despesasVooTerceiros <- filter(despesasVoo,
                                as.character(txtPassageiro) != as.character(txNomeParlamentar))
 ```
 
-A função as.character foi necessária para que as colunas sejam comparadas como strings e não como categorias.
+### Relevância
 
-Abaixo mostramos que esse tipo de despesa é relevante, uma vez que corresponde ~25% da quantidade e do valores totais das despesas com passagens aéreas:
+Vamos começar a análise mostrando o impacto que passagens para terceiros tem no total de passagens aéreas compradas:
 
-```{r}
-1 - ((nrow(despesasVoo) - nrow(despesasVooTerceiros))/nrow(despesasVoo))
+```{r echo=FALSE}
+paste("Percentual em relação a quantidade total passagens compradas: ", round((1 - ((nrow(despesasVoo) - nrow(despesasVooTerceiros))/nrow(despesasVoo)))*100, 2), "%")
 
 
 totDespesasVooTerceiros <- summarize(despesasVooTerceiros, total=sum(vlrLiquido))
-totDespesasVooTerceiros
 
-1 - ((totDespesasVoo - totDespesasVooTerceiros)/totDespesasVoo)
+paste("Valor total das passagens compradas para terceiros: R$", round(totDespesasVooTerceiros, 2))
+
+paste("Percentual em relação ao valor total das passagens compradas: ", round((1 - ((totDespesasVoo - totDespesasVooTerceiros)/totDespesasVoo))*100,2), "%")
+
+qtdDeputados <- despesasVoo %>% distinct(txNomeParlamentar) %>% count()
+paste("Quantidade de deputados que compraram passagens áreas (DCA): ", qtdDeputados)
+
+qtdDeputadosVoosTerceiros <- despesasVooTerceiros %>% distinct(txNomeParlamentar) %>% count()
+paste("Quantidade de deputados que compraram passagens áreas para terceiros (DCAT): ",qtdDeputadosVoosTerceiros)
+
+paste("Percentual DCAT em relação a DCA", round((1 - ((qtdDeputados - qtdDeputadosVoosTerceiros)/qtdDeputados))*100,2), "%")
 ```
 
-### Deputados que mais compraram passagens para terceiros
+Traduzindo para português, temos que 302 deputados (mais de 50% da bancada) usaram dinheiro público para comprar passagem para terceiros  (mantemos a ressalva de conseguir identificar os acessores). Essas compras totalizaram mais de R$ 700.000,00 em passagens para terceiros, o que representa mais de um quarto to total de passagens compradas. 
 
-Primeiros vamos dar uma olhadinha num resumo do conjunto de valores das passagens para terceiros:
+### Os notáveis
 
-```{r}
+Abaixo mostramos o resumo dos gastos com despesas com passagens aéreas para terceiros:
+
+```{r echo=FALSE}
 summary(despesasVooTerceiros$vlrLiquido)
 ```
 
-Dando uma olhada mais de perto nos outliers vemos que no dia 17/03/2015 o deputado Rossoni comprou uma passagem para Curitiba para uma pessoa chamada Gerson Silva, pela bagatela de R$ 24,00:
+Que nos mostra que a norma parece razoável, dando uma olhada mais de perto nos extremos vemos que no dia 17/03/2015 o deputado [Rossoni](http://www.camara.leg.br/internet/deputado/Dep_Detalhe.asp?id=5830546), comprou uma passagem para Curitiba (seu domicílio) para uma pessoa chamada Gerson Silva, pela bagatela de R$ 24,00:
 
-```{r}
-despesasVooTerceiros %>% select(datEmissao, txNomeParlamentar, sgPartido, txtPassageiro, txtTrecho, vlrLiquido) %>% filter(despesasVooTerceiros$vlrLiquido == 24.0)
+```{r echo=FALSE}
+despesasVooTerceiros %>%
+  select(txNomeParlamentar, sgPartido, txtPassageiro, txtTrecho, vlrLiquido) %>%
+  filter(despesasVooTerceiros$vlrLiquido > 0) %>%
+  arrange(vlrLiquido) %>%
+  head(n=1)
 ```
 
-Por outro lado ..
-```{r}
-despesasVooTerceiros %>% select(datEmissao, txNomeParlamentar, sgPartido, txtPassageiro, txtTrecho, vlrLiquido) %>% filter(despesasVooTerceiros$vlrLiquido > 4410.8)
+Do lado oposto temos o deputado [Arnaldo Jordy](http://www.camara.leg.br/internet/deputado/Dep_Detalhe.asp?id=5830744) comprando uma passagem de R$ 4410,80 para uma pessoa chamada Ramon dos Santos.
+
+```{r echo=FALSE}
+despesasVooTerceiros %>%
+  select(txNomeParlamentar, sgPartido, txtPassageiro, txtTrecho, vlrLiquido) %>%
+  arrange(vlrLiquido) %>%
+  tail(n=1)
 ```
 
+Infelizmente não conseguimos encontrar a lista de assessores dos deputados listados acima para conferir se eles eram assessores dos deputados durante o período considerado.
 
+Com relação a dispersão, o gráfico abaixo mostra que a maioria dos valores se encontram abaixo de R$ 1.000,00
 
-```{r}
-topQtd <- despesasVooTerceiros %>%
-  count(txNomeParlamentar) %>%
-  arrange(desc(n)) %>%
-  head(n=5)
-topQtd
+```{r echo=FALSE}
+ggplot(despesasVooTerceiros, aes(x = txNomeParlamentar, y = vlrLiquido)) +
+  geom_point(alpha = 0.2) +
+  scale_y_continuous(breaks=pretty(despesasVooTerceiros$vlrLiquido, n=10)) +
+  theme_bw() +
+  theme(axis.text.x=element_blank()) +
+  xlab("Parlamentares") +
+  ylab("Gasto com passagens aéreas (R$)")
+```
 
-1 - ((nrow(despesasVooTerceiros) - nrow(topQtd))/nrow(despesasVooTerceiros))
+### Os mais gastadores
 
+Abaixo listamos os 5 deputados que mais gastaram com passagens aéreas para terceiros. Mostramos também o total gasto por esses deputados com essas passagens e também o quanto esse total representa com relação ao total de passagens compradas e o total de passagens compradas para terceiros. 
+
+```{r echo=FALSE}
 topTotal <- despesasVooTerceiros %>%
   group_by(txNomeParlamentar) %>%
   summarise(total=sum(vlrLiquido)) %>%
@@ -136,7 +169,20 @@ topTotal <- despesasVooTerceiros %>%
 topTotal
 
 sumTopTotal <- sum(topTotal$total)
-sumTopTotal
+paste("Total gasto: R$ ", round(sumTopTotal, 2))
 
-1 - ((totDespesasVooTerceiros - sum(topTotal$total))/totDespesasVooTerceiros)
+paste("Percentual gasto com relação aos DCA: ", round((1 - ((totDespesasVoo - sum(topTotal$total))/totDespesasVoo))*100,2), "%")
+
+paste("Percentual gasto com relação aos DCAT: ", round((1 - ((totDespesasVooTerceiros - sum(topTotal$total))/totDespesasVooTerceiros))*100,2), "%")
 ```
+
+Para terminar, vamos dar um zoom nos números de passagens de passagens áreas para terceiros do deputado [Paulo Freire](http://www.camara.leg.br/Internet/Deputado/dep_Detalhe.asp?id=160558), do PR de São Paulo. O primeiro lugar no nosso ranking colocou em sua quota mais de 40 viagens de terceiros, totalizando mais de R$ 40.000,00 durante esse período:
+
+```{r echo=FALSE}
+despesasVooTerceiros %>%
+  filter(despesasVooTerceiros$txNomeParlamentar == "PAULO FREIRE") %>%
+  count(txtPassageiro) %>%
+  arrange(desc(n))
+```
+
+Mais uma vez não encontramos a lista oficial de assessores do deputado.
