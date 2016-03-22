@@ -102,6 +102,7 @@ $$
 UtilidadeP(P(T), Q) = \left( 1 - \frac{\left\vert{T}\right\vert}{\left\vert{D}\right\vert} \right)^{\alpha} \left( 0.9 \right)^{1- \alpha}
 $$
 
+Abaixo mostramos o código R contendo a função de utilidade, bem como plotamos o gráfico que nos permite analisar os pontos de máximo: 
 
 ```{r echo=TRUE, fig.width=5, fig.height=2.5, fig.align='center'}
 utilidadeP <- function(d, t, alpha) {
@@ -126,5 +127,9 @@ ggplot(data.frame(x=t, q=utilidadeP(1000, t, 0.95)), aes(x = x, y = q)) +
   ylab("UtilidadeP")
 ```
 
-Através desses gráficos vemos que o valor máximo da função de utilidade ocorre aproximadament em $|T|=200$ e $|T|=50$ para $\alpha=0.2$ e $\alpha=0.95$ respectivamente.
+Através desses gráficos vemos que o valor máximo da função de utilidade ocorre aproximadament em $|T|=200$ e $|T|=50$ para $\alpha=0.2$ e $\alpha=0.95$ respectivamente. Para confirmação, podemos utilizar a fórmula:
+
+$$
+\left\vert{T}\right\vert_{ótimo}=\left\vert{T}\right\vert \, tal\,que \, \frac{\partial (UtilidadeP(P(T), Q))}{\partial \left\vert{T}\right\vert } = 0
+$$
  
