@@ -47,21 +47,17 @@ $$
 Abaixo mostramos o código na linguagem R para cálculo da função de utilidade e gráfico de $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert)$ para $\left\vert{D}\right\vert$ variando entre 0 e 500 e $\left\vert{D}\right\vert = 1000$.
 
 ```{r echo=TRUE, fig.width=5, fig.height=2.5, fig.align='center'}
-qualidade <- function(d, t) {
-  result <- seq(length(t))
-  for (i in 1:length(result)) {
-    if (i < 0.2*d) {
-      result[i] <- (4.5*i)/d
-    } else {
-      result[i] <- 0.9
-    }
+
+qualidade <- function(t, d) {
+  if (t < 0.2*d) {
+      return((4.5*t)/d)
   }
-  return(result)
+   return(0.9)
 }
 
 t <- seq(500)
 
-ggplot(data.frame(x=t, q=qualidade(1000,t)), aes(x = x, y = q)) +
+ggplot(data.frame(x=t, q=sapply(t, qualidade, d=1000)), aes(x = x, y = q)) +
   geom_point(alpha = 0.2) +
   theme_bw() +
   scale_y_continuous(name="qualidade(d, T)", breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9)) +
@@ -105,22 +101,17 @@ $$
 Abaixo mostramos o código R contendo a função de utilidade, bem como plotamos o gráfico que nos permite analisar os pontos de máximo: 
 
 ```{r echo=TRUE, fig.width=5, fig.height=2.5, fig.align='center'}
-utilidadeP <- function(d, t, alpha) {
-  q <- qualidade(d, t)
-  result <- NULL
-  for (i in 1:length(q)) {
-    result[i] <- ((1 - (i/d))^(alpha))*q[i]^(1-alpha)
-  }
-  return(result)
+utilidade <- function(t, d, alpha) {
+  return(((1 - (t/d))^(alpha))*(qualidade(t, d))^(1-alpha))
 }
 
-ggplot(data.frame(x=t, q=utilidadeP(1000, t, 0.2)), aes(x = x, y = q)) +
+ggplot(data.frame(x=t, u=sapply(t, utilidade, d=1000, alpha=0.2)), aes(x = x, y = u)) +
   geom_point(alpha = 0.2) +
   theme_bw() +
   xlab("|T|") +
   ylab("UtilidadeP")
 
-ggplot(data.frame(x=t, q=utilidadeP(1000, t, 0.95)), aes(x = x, y = q)) +
+ggplot(data.frame(x=t, u=sapply(t, utilidade, d=1000, alpha=0.95)), aes(x = x, y = u)) +
   geom_point(alpha = 0.2) +
   theme_bw() +
   xlab("|T|") +
@@ -133,3 +124,9 @@ $$
 \left\vert{T}\right\vert_{ótimo}=\left\vert{T}\right\vert \, tal\,que \, \frac{\partial (UtilidadeP(P(T), Q))}{\partial \left\vert{T}\right\vert } = 0
 $$
  
+Ainda usando R para resolver essa equação, vamos usar a função stats::optimise.
+
+```{r}
+optimise(utilidade, interval = c(0,500), d=1000, alpha=0.2, maximum = TRUE)
+optimise(utilidade, interval = c(0,500), d=1000, alpha=0.95, maximum = TRUE)
+```
