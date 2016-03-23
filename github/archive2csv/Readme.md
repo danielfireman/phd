@@ -26,10 +26,12 @@ wget http://data.githubarchive.org/2015-01-01-{0..23}.json.gz
 Then process everything and create a CSV (144090 lines):
 
 ```{bash}
-rm 2015-01-01.csv && \
+$ output=2015-01-01.csv && \
+rm $output && \
+echo "EventID,Type,CreatedAt,Actor.ID,Repo.ID" >> $output && \
 for f in `ls`; do \
 echo "Processing $f" && \
-cat $f | archive2csv  >> 2015-01-01.csv; \
+cat $f | archive2csv  >> $output; \
 done
 
 Processing 2015-01-01-0.json.gz
