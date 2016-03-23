@@ -1,4 +1,5 @@
 ## Secure Web Application via Automatic Partitioning
+by Stephen Chong, et al
 
 Devido ao apelo das interfaces ricas e responsivas, aplicações web tem cada vez mais funcionalidades sendo executadas no cliente (navegador). Essa é uma tendência perigosa, uma vez que a execução de código no cliente pode trazer sérios riscos de segurança e os desenvolvedores não dispõem de meios para decidir quando é seguro executar uma certa funcionalidade no cliente.
 
