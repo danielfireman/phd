@@ -15,11 +15,16 @@ $ go get github.com/danielfireman/phd/github/archive2csv
 If you don't want to install Go, feel free to send me gentle e-mail saying your platform and I will make the binary avaiable.
 
 ## Usage
+Lets say you would like to process one day worth of Github data in R.
 
-First you pick your archive file at [Github Archive](https://www.githubarchive.org/), lets say ~/githubarchive/2015-03-01-0.json.gz. Then run:
+* First pick your archive files (1 per hour) from [Github Archive](https://www.githubarchive.org/):
 
 ```{bash}
-$ archive2csv --archive_path=~/githubarchive/2015-03-01-0.json.gz
-Processing ~/githubarchive/2015-03-01-0.json.gz. Output will be written to ~/githubarchive/2015-03-01-0.csv
-Conversion completed.
+wget http://data.githubarchive.org/2015-01-01-{0..23}.json.gz
+```
+
+Then process everything and create a CSV (144090 lines):
+
+```{bash}
+for f in `ls`; do cat $f | archive2csv  >> 2015-01-01.csv; done
 ```

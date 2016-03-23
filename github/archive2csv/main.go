@@ -9,30 +9,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/gocarina/gocsv"
-)
-
-var (
-	archivePath = flag.String("archive_path", "", "")
 )
 
 type Repo struct {
 	ID uint64 `json:"id"`
 }
 
-func (r Repo) String() string {
-	return fmt.Sprintf("%d", r.ID)
-}
-
 type Actor struct {
 	ID uint64 `json:"id"`
-}
-
-func (a Actor) String() string {
-	return fmt.Sprintf("%d", a.ID)
 }
 
 type Event struct {
@@ -41,60 +25,32 @@ type Event struct {
 	CraetedAt string `json:"created_at"`
 	Actor     Actor  `json:"actor"`
 	Repo      Repo   `json:"repo"`
-	Payload   []byte `json:"payload"`
-}
-
-type Language struct {
-	Name string
-	LOC  int
-}
-
-type PullRequestEventPayload struct {
-	Languages []string
 }
 
 func (e Event) String() string {
-	if e.Type == "PullRequestEvent" {
-
-	}
-	return fmt.Sprintf("%s,%s,%s", e.ID, e.Type, e.CraetedAt)
+	return fmt.Sprintf("%s,%s,%s,%d,%d", e.ID, e.Type, e.CraetedAt, e.Actor.ID, e.Repo.ID)
 }
 
 func main() {
 	flag.Parse()
-	outputPath := filepath.Join(filepath.Dir(*archivePath), strings.Replace(filepath.Base(*archivePath), ".json.gz", ".csv", 1))
-	fmt.Printf("Processing %s. Output will be written to %s\n", *archivePath, outputPath)
-
-	reader, err := os.Open(*archivePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer reader.Close()
-
-	archive, err := gzip.NewReader(reader)
+	archive, err := gzip.NewReader(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer archive.Close()
 
-	events := []Event{}
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+
 	scanner := bufio.NewScanner(archive)
+	lines := 0
 	for scanner.Scan() {
 		e := Event{}
 		if err := json.NewDecoder(bytes.NewBufferString(scanner.Text())).Decode(&e); err != nil {
 			log.Fatal(err)
 		}
-		events = append(events, e)
+		lines++
+		fmt.Fprintf(w, "%s\n", e.String())
 	}
-
-	o, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer o.Close()
-
-	if err := gocsv.MarshalFile(events, o); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Conversion completed.")
+	fmt.Fprintf(os.Stderr, "%d lines converted.\n", lines)
 }
