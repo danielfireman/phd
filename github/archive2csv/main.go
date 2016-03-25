@@ -17,14 +17,13 @@ type Repo struct {
 }
 
 type Event struct {
-	ID        string `json:"id"`
 	Type      string `json:"type"`
 	CraetedAt string `json:"created_at"`
 	Repo      Repo   `json:"repo"`
 }
 
 func (e Event) String() string {
-	return fmt.Sprintf("%s,%s,%d", e.ID, e.Type, e.Repo.ID)
+	return fmt.Sprintf("%s,%d", e.Type, e.Repo.ID)
 }
 
 func main() {
