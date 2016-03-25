@@ -9,13 +9,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 type Repo struct {
-	ID uint64 `json:"id"`
-}
-
-type Actor struct {
 	ID uint64 `json:"id"`
 }
 
@@ -23,12 +20,11 @@ type Event struct {
 	ID        string `json:"id"`
 	Type      string `json:"type"`
 	CraetedAt string `json:"created_at"`
-	Actor     Actor  `json:"actor"`
 	Repo      Repo   `json:"repo"`
 }
 
 func (e Event) String() string {
-	return fmt.Sprintf("%s,%s,%s,%d,%d", e.ID, e.Type, e.CraetedAt, e.Actor.ID, e.Repo.ID)
+	return fmt.Sprintf("%s,%s,%d", e.ID, e.Type, e.Repo.ID)
 }
 
 func main() {
@@ -50,7 +46,11 @@ func main() {
 			log.Fatal(err)
 		}
 		lines++
-		fmt.Fprintf(w, "%s\n", e.String())
+		t, err := time.Parse(time.RFC3339, e.CraetedAt)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprintf(w, "%s,%d,%d,%d,%d,%d,%d\n", e.String(), t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 	}
 	fmt.Fprintf(os.Stderr, "%d lines converted.\n", lines)
 }

@@ -27,7 +27,7 @@ Then process everything and create a CSV (144090 lines):
 
 ```{bash}
 $ output=2015-01-01.csv && \
-rm $output && \
+rm -f $output && \
 echo "EventID,Type,CreatedAt,Actor.ID,Repo.ID" >> $output && \
 for f in `ls`; do \
 echo "Processing $f" && \
