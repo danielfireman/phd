@@ -24,7 +24,7 @@ Modelar matematicamente a função $Q(\left\vert{D}\right\vert, \left\vert{T}\ri
    1. Cresce linearmente de 0 a 0.9 quando $\left\vert{T}\right\vert$ varia de 0 a 20% de $\left\vert{D}\right\vert$
    2. Constante em 0.9 para $\left\vert{T}\right\vert$ maior que 20% de $\left\vert{D}\right\vert$
 
-Vamos começar descrevendo matematicamente o primeiro seguimento linear, qual deve obedecer a uma função geral $qualidade(d, T) =a \cdot \left\vert{T}\right\vert + b$. A partir da definição, temos os dois pontos extremos:
+Vamos começar descrevendo matematicamente o primeiro segmento linear, qual deve obedecer a uma função geral $qualidade(d, T) =a \cdot \left\vert{T}\right\vert + b$. A partir da definição, temos os dois pontos extremos:
 $$
 \begin{aligned}
 Q(\left\vert{D}\right\vert,\, 0) = & a \cdot 0 + b = 0 \implies b = 0 \\
@@ -32,7 +32,7 @@ Q(\left\vert{D}\right\vert,\, 0.2 \cdot \left\vert{D}\right\vert) = & a \cdot 0.
 \end{aligned}
 $$
 
-O segundo segmento é uma constante, $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert) = 0.9$. Combinando essas duas definições temos a seguinte definição matemática da função $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert)$:
+A segunda parte da equação é uma constante, $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert) = 0.9$. Combinando essas duas definições temos a seguinte definição matemática da função $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert)$:
 
 $$
 Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert) =
