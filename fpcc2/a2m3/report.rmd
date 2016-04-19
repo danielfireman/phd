@@ -2,7 +2,7 @@
 title: "FPCC2 Atividade 2 Milestone 3"
 author: "Daniel Fireman (danielfireman@gmail.com)"
 date: "April 2016"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -55,47 +55,42 @@ d$txtDescricao[index] <- "PASSAGENS AÉREAS"
 aggregate(vlrLiquido ~ txtDescricao, d , "sum") %>% arrange(desc(vlrLiquido))
 ```
 
+Por fim, vamos realizar o primeiro nível de agregação, tornando os dados mais próximos do que queremos (podemos) estudar: estados, partidos e gastos.
+
+```{r echo=TRUE, message=FALSE}
+data.aggregate <- aggregate(vlrLiquido ~ sgUF+sgPartido+txtDescricao, d , "sum")
+summary(data.aggregate)
+```
+
 ## Redução de dimensionalidade
 
 Um problema que temos é a grande quantidade de tipos de despesas (mesmo para uma redução de dimensionalidade). Olhando mais uma vez a visão agregada visão agregada vemos que os top 4 tipos de despesas correspondem a quase 60% do total de despesas. Optamos por usar esses 4 e agregar os demais tipos:
 
 ```{r echo=TRUE, message=FALSE}
-index.outros <- d$txtDescricao != "DIVULGAÇÃO DA ATIVIDADE PARLAMENTAR." &
-  d$txtDescricao != "PASSAGENS AÉREAS" &
-  d$txtDescricao != "MANUTENÇÃO DE ESCRITÓRIO DE APOIO À ATIVIDADE PARLAMENTAR" &
-  d$txtDescricao != "LOCAÇÃO OU FRETAMENTO DE VEÍCULOS AUTOMOTORES"
-d$txtDescricao[index.outros] <- "OUTROS"
-aggregate(vlrLiquido ~ txtDescricao, d , "sum") %>% arrange(desc(vlrLiquido))
+index.outros <- data.aggregate$txtDescricao != "DIVULGAÇÃO DA ATIVIDADE PARLAMENTAR." &
+  data.aggregate$txtDescricao != "PASSAGENS AÉREAS" &
+  data.aggregate$txtDescricao != "MANUTENÇÃO DE ESCRITÓRIO DE APOIO À ATIVIDADE PARLAMENTAR" &
+  data.aggregate$txtDescricao != "LOCAÇÃO OU FRETAMENTO DE VEÍCULOS AUTOMOTORES"
+data.aggregate.outros <- data.aggregate
+data.aggregate.outros$txtDescricao[index.outros] <- "OUTROS"
 ```
 
-O próximo passo é transformar os dados no formato largo. Uma grande dificuldade encontrada foi achar um identificador único para cada entrada. Um exemplo de erros nos dados que dificultaram essa operação segue abaixo:
+O próximo passo é transformar os dados no formato largo e seguir com o cálculo do PCA:
 
 ```{r echo=TRUE, message=FALSE}
-filter(d, numLote == 1168083)
-```
-
-Como não faz sentido colocar valor como identificador, vamos utilizar a soma como função de agregação e finalmente temos os dados em formato largo:
-
-```{r echo=TRUE, message=FALSE}
-d.wide <- dcast(d,
-  numMes+numAno+numParcela+numSubCota+
-  txtNumero+numLote+datEmissao+numRessarcimento+
-  sgPartido+sgUF+ideCadastro+txtCNPJCPF~txtDescricao,
+d.wide.outros <- dcast(data.aggregate.outros,
+  sgUF+sgPartido~txtDescricao,
   value.var = "vlrLiquido",
-  fun.aggregate = sum) %>%
-  select(-numMes, -numAno, -numParcela,
-         -numSubCota, -txtNumero, -numLote,
-         -datEmissao, -numRessarcimento, -ideCadastro,
-         -txtCNPJCPF)
-
-summary(d.wide)
-```
-
-E seguimos com o cálculo do PCA:
-
-```{r echo=TRUE, message=FALSE}
-d.pca <- prcomp(d.wide[,3:7], scale. = TRUE, center=TRUE)
-summary(d.pca)
+  fun.aggregate = sum)
+d.wide.outros <- rename(d.wide.outros, c(
+  "sgUF"="UF",
+  "sgPartido"="Partido",
+  "MANUTENÇÃO DE ESCRITÓRIO DE APOIO À ATIVIDADE PARLAMENTAR"="MANUT. DE ESCRITÓRIO",
+  "DIVULGAÇÃO DA ATIVIDADE PARLAMENTAR."="DIVULGAÇÃO",
+  "LOCAÇÃO OU FRETAMENTO DE VEÍCULOS AUTOMOTORES"="LOCAÇÃO OU FRET. VEÍCULOS"))
+summary(d.wide.outros)
+d.pca.outros <- prcomp(d.wide.outros[,3:7], scale. = TRUE, center=TRUE)
+summary(d.pca.outros)
 ```
 
 Para diminuir os danos causados pelo *skewness* dos dados, usamos os parâmetros *scale* e *center* no cálculo do PCA. Com o resumo da primeira interação, podemos notar que todos os componentes colaboram de forma muito parecida para explicação da variância total. Abaixo vemos o gráfico que mostra a quase linearidade da proporção cumulativa da variância:
@@ -113,22 +108,41 @@ plot_pve <- function(prout){
     scale_y_continuous(breaks = seq(0, 1, by=0.2)) +
     scale_x_continuous(breaks = seq(0, 5))
 }
-plot_pve(d.pca)
+plot_pve(d.pca.outros)
 ```
 
-De forma geral, esse gráfico nos mostra que cada um dos tipos de despesas contribui de forma relativamente igual a variância do total de despesas.
+Podemos notar que os 3 primeiros componentes principais explicam em torno de 85% da variância total dos gastos. O agrupamento dos pontos no gráfico abaixo permite ter uma idéia visual dessa correlação e que ela existe tanto no agrupamento por estado quanto no agrupamento por partido.
 
-```{r echo=TRUE, message=FALSE, fig.asp=0.5}
-ggbiplot(d.pca, obs.scale = 1, var.scale = 1, ellipse = TRUE, circle = TRUE) +
-  theme_bw()
+```{r echo=TRUE, message=FALSE, fig.align="center"}
+ggbiplot(d.pca.outros,
+  obs.scale = 1,
+  var.scale = 1,
+  ellipse = FALSE,
+  circle = TRUE,
+  alpha = 0.5,
+  groups = c("UF","Partido")) +
+  theme_cowplot() +
+  xlab("PC1 (Explica 57.4% da variância)") +
+  ylab("PC2 (Explica 15.2% da variância)") +
+  theme(
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    legend.position="top",
+    legend.title = element_blank()) +
+  guides(color=guide_legend(
+    override.aes = list(alpha = 1)))
+```
 
-d.wide.unique <- unique(d.wide)
-set.seed(42)
-tsne.out <- Rtsne(d.wide.unique, verbose = TRUE, max_iter = 500)
-d.tsne <- as.data.frame(tsne.out$Y)
-d.tsne$uf = d.wide.unique$sgUF
-d.tsne$partido = d.wide.unique$sgPartido
+Uma vez que usamos uma *scale=TRUE*, os valores das variavéis foram normalizados e centrados no zero. Essa técnica permite o desenho de um círculo que engloba o agrupamento principal, o que nos ajuda a ver o agrupamento tanto no nível de partido quanto no nível de UF. Notamos também que há poucos *outliers* no sentido de locação e fretamento de veículos e muitos com despesas na área de divulgação.
 
-ggplot(d.tsne, aes(x = V1, y = V2)) + 
-  geom_point(alpha = 0.2, color = "tomato") 
+## Agrupamento
+
+```{r echo=TRUE, message=FALSE, fig.align="center"}
+d.wide.outros.scaled <- scale(d.wide.outros[,3:7])
+d.wide.outros.scaled.hclust <- hclust(dist(d.wide.outros.scaled))
+
+plot(d.wide.outros.scaled.hclust, labels=d.wide.outros$UF)
+
+table(cutree(d.wide.outros.scaled.hclust,20))
 ```
