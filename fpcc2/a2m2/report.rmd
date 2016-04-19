@@ -1,0 +1,127 @@
+---
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "April 2016"
+title: "FPCC2 Atividade 2 Parte 2"
+
+output:
+  pdf_document:
+    fig_caption: yes
+    latex_engine: pdflatex
+fontsize: 8pt
+documentclass: article
+classoption: twocolumn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Descrição da Atividade
+
+Nessa parte do problema, o objetivo é revisitar, refazer ou melhorar e deixar pronta para publicação uma visualização que você fez no problema 1\. O que queremos é que o resultado seja: 
+
+* Baseado em uma visualização do primeiro problema, porém melhorada
+* Envolva ao menos 3 variáveis (você pode ter que mudar a visualização original)
+* Siga as boas práticas de visualização de dados que discutimos até agora
+* Seja plenamente legível nos valores, legenda, eixos, etc. Tanto no texto quanto no tamanho desses elementos. 
+* Esteja dentro de um documento pdf que tem texto em duas colunas. A figura deve ter a largura de uma coluna, e deve ser * facilmente legível com zoom de 100%. O documento também deve possuir a figura original gerada para o problema anterior, e: 
+
+     * Um texto que explica qual a tarefa ou tarefas que a visualização se pretende a apoiar. 
+     * Uma breve explicação do que você mudou na figura
+     * Preencha o restante do texto até completar uma página inteira ao menos com Lorem Impsum.
+
+## Resposta
+
+O relatório do problema 1 focou nos gastos com passagens aéreas para terceiros. O período analisado foi Janeiro e Abril de 2015.
+
+A visualização pretende apoiar o esclarecimento da distribuição dos gastos com passagens aéreas e também mostrar os maiores gastos. A idéia principal é mostrar onde fica a concentração dos gastos, chamar atenção para uma idéia de número de gastos individuais e manter os maiores gastos. O gráfico original segue abaixo:
+
+```{r echo=TRUE, message=FALSE}
+require("dplyr")
+require("ggplot2")
+require("cowplot")
+
+d <- read.csv("../a1m2/AnoAtual.csv")
+despesasVoo <-
+  d %>% filter(
+    d$txtPassageiro != "-" &
+    as.character(txtPassageiro) != as.character(txNomeParlamentar))
+ggplot(
+  despesasVoo,
+  aes(
+    x = txNomeParlamentar,
+    y = vlrLiquido / 1000)) +
+  geom_point(alpha = 0.2) +
+  theme_bw() +
+  theme(axis.text.x=element_blank()) +
+  xlab("Parlamentares") +
+  ylab("Gasto com passagens aéreas para terceiros (* R$ 1000)")
+```
+
+Para se encaixar nos requisitos do exercício, iremos adicionar a variável partido (que mostra a qual partido o candidato pertence). Iremos utilizar o canal cor, assim mantemos a intenção original. Uma vez que o número de partidos é muito grande (~28), a interpretação do gráfico ficaria difícil. Dessa forma, decidimos separar nos 5 partidos que mais gastaram e agrupar os demais. Optamos por fazer isso pois notamos que os top5 representam mais de 50% dos gastos totais. 
+
+No gráfico podemos notar que a densidade maior de despesas continua na faixa entre 0 e 1500 reais, que era uma das informação principais do gráfico original. Também queríamos mostrar as maiores despesas, as quais tentativa ser investigadas no relatório original.
+
+```{r}
+top5 <- despesasVoo %>%
+  select(sgPartido, vlrLiquido) %>%
+  group_by(sgPartido) %>%
+  summarise(sum=sum(vlrLiquido)) %>%
+  arrange(desc(sum)) %>%
+  head(n=5)
+
+m <- merge(
+  despesasVoo, top5, by="sgPartido") %>%
+  group_by(sgPartido)
+
+outros <- data.frame(sgPartido=setdiff(
+  despesasVoo$sgPartido,
+  top5$sgPartido))
+outros <- merge(
+  despesasVoo,
+  outros,
+  by="sgPartido")
+outros$sgPartido <- "Outros"
+s <- (outros %>%
+      summarise(sum=sum(vlrLiquido)))$sum
+outros$sum <- s
+m <- merge(outros, m, all=TRUE)
+
+ggplot(
+  m,
+  aes(
+    x = sgPartido,
+    y = vlrLiquido / 1000)) +
+  geom_violin(aes(colour=sgPartido)) +
+  geom_point(
+    alpha = 0.3, aes(colour=sgPartido)) +
+  theme_bw() +
+  theme(
+    text = element_text(size=18),
+    axis.ticks.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.x = element_text(size=15),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()) +
+  scale_y_continuous(breaks = seq(-3, 5)) +
+  guides(colour = guide_legend(
+    override.aes = list(alpha = 1),
+    title="Partido")) +
+  xlab("Despesas") +
+  ylab("Valor (milhares de R$)") +
+  ggtitle("Passagens para terceiros")
+```
+
+Mudanças:
+
+* Adição do título
+* Diminuição a quantidade de texto no eixo vertical
+* Remoção do rótulo do eixo horizontal
+* Remoção dos ticks do eixo horizontal
+* Aumento do tamanho da fonte dos rótulos
+* Aumento do número de breaks no eixo vertical
+* Aumento do tamanho da fonte dos ticks do eixo vertical
+* Adição de cores aos pontos referenciando os partidos que mais gastaram com passagens para terceiros
+* Agrupamento dos pontos por partido (top5 + os demais)
+* Modificação das cores da legenda para alpha = 1, aumentando a clareza para enxergar as cores
+* Usamos o voliono para deixar mais claro os outliers (com a linha que vai ate o ponto) e a densidade
