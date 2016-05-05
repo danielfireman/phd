@@ -1,0 +1,19 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "kNvIxjs3Hd0nopHlzwIQl2bA4OI=",
+			"path": "github.com/PuerkitoBio/goquery",
+			"revision": "2e29ea41f0d13f4a303c75553f4eeadddc7a4c56",
+			"revisionTime": "2016-04-08T11:41:18Z"
+		},
+		{
+			"checksumSHA1": "scbsJ+LWScOc+eCz2rV0ABWwJEg=",
+			"path": "github.com/jackdanger/collectlinks",
+			"revision": "24c4ee2870ba625f927b59de8c421c3f0be82b90",
+			"revisionTime": "2016-04-21T20:27:02Z"
+		}
+	],
+	"rootPath": "jefferson_crawler"
+}
