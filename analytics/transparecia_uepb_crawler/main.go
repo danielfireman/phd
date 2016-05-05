@@ -4,20 +4,25 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/jackdanger/collectlinks"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/jackdanger/collectlinks"
 )
 
 const urlConsulta = "http://transparencia.uepb.edu.br/wp-content/themes/uepb2016-transparencia-final/controller/consulta.php"
 
-var mes = flag.String("mes", "01/2016", "mm/yyyy de refência.")
+var mes = flag.String("mes", "01/2016", "mm/yyyy de referência.")
 var maxWorkers = flag.Int("max_workers", 20, "Número máximo de workers.")
 
 func main() {
 	flag.Parse()
+
+	if len(*mes) == 0 {
+		log.Fatalf("Mês de referência inválido:%s. Formato esperado: mm/yyyy.", *mes)
+	}
 
 	param := fmt.Sprintf("parametros[]=%s&parametros[]=&parametros[]=&parametros[]=", *mes)
 	resp, err := http.Post(
