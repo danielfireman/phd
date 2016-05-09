@@ -64,7 +64,7 @@ func main() {
 
 	// Fill up work queue.
 	go func() {
-		for _, link := range collectlinks.All(resp.Body)[:5] {
+		for _, link := range collectlinks.All(resp.Body) {
 			links <- link
 		}
 		close(links)
