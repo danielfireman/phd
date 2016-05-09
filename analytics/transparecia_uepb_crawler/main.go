@@ -20,6 +20,7 @@ const urlConsulta = "http://transparencia.uepb.edu.br/wp-content/themes/uepb2016
 
 var mes = flag.String("mes", "01/2016", "mm/yyyy de referência.")
 var maxWorkers = flag.Int("max_workers", 20, "Número máximo de workers.")
+var sep = flag.String("sep", ",", "CSV separator.")
 
 func main() {
 	startTime := time.Now()
@@ -63,7 +64,7 @@ func main() {
 
 	// Fill up work queue.
 	go func() {
-		for _, link := range collectlinks.All(resp.Body) {
+		for _, link := range collectlinks.All(resp.Body)[:5] {
 			links <- link
 		}
 		close(links)
@@ -97,13 +98,15 @@ func doWork(links <-chan string, results chan<- string) {
 		}
 		var row []string
 		doc.Find("td.desc").Each(func(i int, s *goquery.Selection) {
-			r := strings.Trim(s.Next().Text(), " \n")
-			if len(r) > 0 {
-				row = append(row, r)
-			}
+			cell := strings.Replace(
+				strings.Trim(s.Next().Text(), " \n"),
+				",",
+				".",
+				1)
+			row = append(row, cell)
 		})
 		if len(row) > 0 {
-			results <- strings.Join(row, ";")
+			results <- strings.Join(row, *sep)
 		} else {
 			fmt.Fprintf(os.Stderr, "Não achou td.desc: %s\n", link)
 		}
