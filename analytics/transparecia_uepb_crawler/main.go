@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -45,32 +46,43 @@ func main() {
 
 	links := make(chan string, *maxWorkers)
 	results := make(chan string, *maxWorkers)
-
+	var wg sync.WaitGroup
 	for i := 0; i < *maxWorkers; i++ {
-		go worker(i, links, results)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			doWork(links, results)
+		}()
 	}
 
+	// Work is done, close the result channel.
 	go func() {
-		for _, link := range collectlinks.All(resp.Body) {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Fill up work queue.
+	go func() {
+		for _, link := range collectlinks.All(resp.Body)[:10] {
 			links <- link
 		}
 		close(links)
 	}()
 
+	// Print results.
 	for row := range results {
 		fmt.Println(row)
 	}
 
-	close(results)
-	fmt.Fprintf(os.Stderr, "\nFinished! Duration: %s", time.Now().Sub(startTime))
+	fmt.Fprintf(os.Stderr, "\nFinished! Duration: %s\n", time.Now().Sub(startTime))
 }
 
 const maxRetries = 3
 
-func worker(id int, links <-chan string, results chan<- string) {
+func doWork(links <-chan string, results chan<- string) {
 	for link := range links {
 		var doc *goquery.Document
-		for i := 1; ;i++ {
+		for i := 1; ; i++ {
 			var err error
 			doc, err = goquery.NewDocument(link)
 			if err == nil {
@@ -81,7 +93,7 @@ func worker(id int, links <-chan string, results chan<- string) {
 				fmt.Fprintf(os.Stderr, "Página não processada: %s", link)
 				return
 			}
-			time.Sleep(time.Duration(i) * time.Duration (rand.Intn(5)) * time.Second)
+			time.Sleep(time.Duration(i) * time.Duration(rand.Intn(5)) * time.Second)
 		}
 		var row []string
 		doc.Find("td.desc").Each(func(i int, s *goquery.Selection) {
