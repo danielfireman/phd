@@ -6,5 +6,7 @@ Usage:
 
 ```sh
 $ cp movies_header.csv movies_expanded.csv
-$ cat movies.csv | go run main.go > movies_expanded.csv
+$ cat movies.csv | go run main.go >> movies_expanded.csv
 ```
+
+Import those in R or your preferred tool and enjoy!
