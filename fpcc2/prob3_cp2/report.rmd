@@ -1,0 +1,24 @@
+---
+title: "FPCC2 - Prob3 C2"
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "May 11, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Análise exploratória dos dados
+
+```{r setup, include=FALSE}
+links <- read.csv("ml-latest-small/links.csv")
+movies <- read.csv("ml-latest-small/movies.csv")
+ratings <- read.csv("ml-latest-small/ratings.csv") 
+tags <- read.csv("ml-latest-small/tags.csv")
+
+require("splitstackshape")
+movies.wide <- cSplit(movies, "genres", "|")
+
+```
+
