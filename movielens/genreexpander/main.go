@@ -1,8 +1,9 @@
 package main
 
 import (
-	"bufio"
+	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 )
@@ -30,20 +31,22 @@ var genreMap = map[string]int{
 }
 
 func main() {
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		row := scanner.Text()
+	records, err := csv.NewReader(os.Stdin).ReadAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, members := range records {
 		// Very simple way to skip the title.
-		if row == "movieId,title,genres" {
+		if members[0] == "movieId" && members[1] == "title" && members[2] == "genres" {
 			continue
 		}
-		members := strings.Split(row, ",")
 		genres := strings.Split(members[2], "|")
 
 		// id, title, #genres counter of all genres
 		newRow := make([]string, 3+len(genreMap))
 		newRow[0] = members[0]
-		newRow[1] = members[1]
+		newRow[1] = fmt.Sprintf("\"%s\"", members[1])
 		newRow[2] = fmt.Sprintf("%d", len(genres))
 		for _, g := range genres {
 			newRow[3+genreMap[g]] = "1"
@@ -55,9 +58,5 @@ func main() {
 			}
 		}
 		fmt.Println(strings.Join(newRow, ","))
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		os.Exit(1)
 	}
 }
