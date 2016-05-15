@@ -1,0 +1,9 @@
+FROM {{.BaseImage}}
+
+ADD . /go/src/github.com/danielfireman/phd/experiments/golang/rtsimple
+
+RUN go install github.com/danielfireman/phd/experiments/golang/rtsimple/server
+
+ENTRYPOINT /go/bin/server --port {{.Port}}
+
+EXPOSE {{.Port}}
