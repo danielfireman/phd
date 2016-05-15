@@ -1,0 +1,204 @@
+---
+title: "FPCC2 - Prob3 C2"
+documentclass: article
+date: "May 11, 2016"
+output:
+  pdf_document:
+    fig_caption: yes
+    latex_engine: pdflatex
+  html_document: default
+fontsize: 8pt
+---
+
+```{r setup, include=FALSE}
+require("dplyr")
+require("ggplot2")
+require("resample")
+```
+
+# Leitura dos dados
+
+```{r reading_data, warning=FALSE}
+movies <- read.csv("ml-latest-small/movies_expanded.csv")
+ratings <- read.csv("ml-latest-small/ratings.csv") 
+```
+
+Já na primeira análise dos dados percebemos que os gêneros dos filmes são representado como um string separado por "|". Como esse formato dificulta muito a análise (principalmente da questão número 2), optamos por realizar um pré-processamento. A objeito do pré-processamento é ter os dados em formato wide: cada gênero em sua própria coluna. O programa que realiza o pré-processamento foi programado em golang e disponibilizado no [github.com/danielfireman/phd/movielens/genreexpander](https://github.com/danielfireman/phd/tree/master/movielens/genreexpander).
+
+# Análise exploratória dos dados
+
+Vamos começar analisando um histograma da quantidade de gêneros dos filmes.
+
+```{r old_histogram_ngenres, fig.asp=0.5, fig.align='center'}
+ggplot(movies, aes(x=NumGenres)) +
+  geom_histogram(binwidth = 1, color="black", fill="white") +
+  geom_vline(aes(xintercept=mean(NumGenres)), color="darkblue", size=1) +
+  geom_text(aes(x=mean(NumGenres), label="Mean", y=1000), colour="darkblue", vjust = 2, angle=90) +
+  geom_vline(aes(xintercept=median(NumGenres)), color="coral", size=1) +
+  geom_text(aes(x=median(NumGenres), label="Median", y=1000), colour="coral", vjust = -1, angle=90) +
+  xlab("Número de Gêneros") +
+  ylab("Quantidade de filmes")
+```
+
+A partir do histograma podemos notar que uma fração muito pequena dos filmes tem acima de 5 gêneros. Optamos por remover esses da amostra. Abaixo vemos o novo histograma.
+
+```{r new_histogram_ngenres, fig.asp=0.5, fig.align='center'}
+movies <- filter(movies, NumGenres <= 5)
+ggplot(movies, aes(x=NumGenres)) +
+  geom_histogram(binwidth = 1, color="black", fill="white") +
+  geom_vline(aes(xintercept=mean(NumGenres)), color="darkblue", size=1) +
+  geom_text(aes(x=mean(NumGenres), label="Mean", y=1000), colour="darkblue", vjust = 2, angle=90) +
+  geom_vline(aes(xintercept=median(NumGenres)), color="coral", size=1) +
+  geom_text(aes(x=median(NumGenres), label="Median", y=1000), colour="coral", vjust = -1, angle=90) +
+  xlab("Número de Gêneros") +
+  ylab("Quantidade de filmes")
+```
+
+Notamos que o histograma é enviesado a esquerda e com média e mediana muito próximas. Ou seja, a imensa maioria dos filmes tem muito poucos gêneros.
+
+Partindo para as avaliações, como queremos estimar o sentimento da população (avaliação) com relação a quantidade de gêneros optamos por não remover outliers. Filmes que tem mais avaliações vão impactar a média proporcionalmente com sua popularidade. Consideramos isso uma forma a mais de capturar sentimento. Abaixo mostramos um histograma das avaliações:
+
+
+```{r ratings_histogram, fig.asp=0.5, fig.align='center'}
+meanRating <- mean(ratings$rating)
+medianRating <- median(ratings$rating)
+ggplot(ratings, aes(x=rating)) +
+  geom_histogram(binwidth = 1, color="black", fill="white") +
+  geom_vline(aes(xintercept=meanRating), color="lightblue", size=1) +
+  geom_text(aes(x=meanRating, label="Mean", y=15000), colour="darkblue", vjust = -1, angle=90) +
+  geom_vline(aes(xintercept=medianRating), color="coral", size=1) +
+  geom_text(aes(x=medianRating, label="Median", y=15000), colour="coral", vjust = 2, angle=90) +
+  xlab("Avaliações") +
+  ylab("Quantidade de filmes")
+```
+
+Vemos que a distribuição é ligeiramente enviesada a direita e que a média e a mediana são praticamente iguais (em torno de 3.5). Um dado interessante observar que a maioria dos usuários que realizaram avaliação (ainda sem fazer inferências), avaliaram bem os filmes.
+
+#  Questão 1
+
+Existe uma relação entre em quantos gêneros os filmes se encaixam e a avaliação média que os filmes recebem?
+
+Começamos por tentar avaliar se existe alguma correlação entre essas duas variáveis: avaliação e quantidade de gênero. O gráfico abaixo mostra visualmente essa correlação. 
+
+```{r,warning=F, fig.asp=0.5, fig.align='center'}
+movies.ratings <- merge(movies, ratings, by = "movieId", all.x=TRUE) %>% na.omit()
+qplot(movies.ratings$NumGenres, movies.ratings$rating, geom = "jitter", alpha=0.1) +
+  guides(alpha=FALSE) +
+  xlab("Número de Gêneros")+
+  ylab("Avaliações")
+```
+
+No gráfico vemos que a densidade de pontos com filmes que contém 2 ou 3 gêneros é maior. Observamos que no geral as notas são altas (densidade menor de pontos na parte de baixo do gráfico, principalmente na parte com 5 gêneros). 
+
+Podemos agora tentar estimar se a relação existe através do cálculo do intervalo de confiança para a média da população. Os cálculos abaixo mostram o intervalo de confiança (para uma confiança de 99%) para os filmes com 1, 2, 3, 4 e 5 gêneros.
+
+```{r,warning=F, fig.asp=0.5, fig.align='center'}
+bGenre <- function(numGenres) {
+  n <- filter(movies.ratings, NumGenres == numGenres)
+  return(bootstrap(n$rating, mean, R = 1000))
+}
+
+b1 <- bGenre(1)
+hist(b1)
+i1 <- CI.percentile(b1, probs = c(.005, .995))
+
+b2 <- bGenre(2)
+i2 <- CI.percentile(b2, probs = c(.005, .995))
+
+b3 <- bGenre(3)
+i3 <- CI.percentile(b3, probs = c(.005, .995))
+
+b4 <- bGenre(4)
+i4 <- CI.percentile(b4, probs = c(.005, .995))
+
+b5 <- bGenre(5)
+hist(b5)
+i5 <- CI.percentile(b5, probs = c(.005, .995))
+```
+
+Notamos que o intervalo de confiança para filmes com 5 gêneros é maior, o que era esperado dada a baixa densidade dessa conluna mostrada no gráfico anterior. Com relação aos ICs, podemos notar que os dados gerados pela reamostragem segue a distribuição normal. Escolhemos apenas o 1 e o 5 para diminuir o tamanho do PDF gerado. Ao analisar os intervalos vemos que eles são muito próximos (vários se interceptam).  O gráfico abaixo tem como objetivo facilitar essa visualização:
+
+```{r,warning=F, fig.asp=0.5, fig.align='center'}
+boot_plot <- data.frame(
+  upper = c(i1[1], i2[1], i3[1], i4[1], i5[1]),
+  mean = c(mean(i1),mean(i2),mean(i3),mean(i4),mean(i5)),
+  lower = c(i1[2], i2[2], i3[2], i4[2], i5[2]))
+
+boot_plot %>% ggplot(aes(x = 1:nrow(boot_plot), y = mean)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = lower, ymax = upper)) +
+  geom_hline(aes(yintercept=mean(mean(medianRating)), color="coral", linetype="dashed")) +
+  xlab("Número de Gêneros") +
+  ylab("Avaliações") +
+  guides(color=FALSE, linetype=FALSE)
+```
+
+As barras de erro acima delimitam o intervalo que a média populacional faz parte (com confiança de 99%). Os pontos marcam o centro das barras de erro. Por fim, a linha vermelha mostra a média da amostra. Confirmando a intuição retirada do gráfico de correção acima, existe uma correlação entre positiva (quase) linear entre a média das avaliações e o número de gêneros que um filme possui.
+
+Nos chama atenção que a barra de erros para filmes com 5 gêneros. Nesse caso temos a barra de erro maior, o que é explicado pelo número de pontos ser menor que os dos demais números de gêneros (confirmado intuitivamente no gráfico de correlação acima). Como o intervalo em questão não inclui a média da amostra, para efeitos de exercício vamos calcular a diferença das médias com confiança de 99% (entre as avaliações de filmes com 5 gêneros e 1 gênero).
+
+```{r}
+ng5 <- filter(movies.ratings, NumGenres == 5) %>% select(rating)
+ng1 <- filter(movies.ratings, NumGenres == 1) %>% select(rating)
+boot_diff <- bootstrap2(
+  data=ng5$rating,
+  data2=ng1$rating,
+  statistic = mean)
+hist(boot_diff)
+CI.percentile(boot_diff, probs = c(.005, .995))
+```
+
+
+# Questão 2
+
+Entre os 10 gêneros que têm mais filmes, quais possuem maior variação nas notas atribuídas a seus filmes?
+
+Abaixo mostramos a resolução do problema e as explicações de cada passo estão nos comentários do  código.
+
+```{r,warning=F, fig.align='center'}
+# Criando data.frame que contém a quantidade de filmes em cada gênero.
+# Temos os dados no formato wide (um gênero por coluna) e o número nas células
+# referente aos gêneros que o filme faz parte. Dessa forma, reduzimos o problema
+# a uma soma simples das colunas.
+top_genres <- data.frame()
+genre_cols <- movies[4:ncol(movies)]
+for (n in 1:ncol(genre_cols)) {
+  top_genres[n, "count"] <- sum(genre_cols[n])  # Necessário para ordenação
+  top_genres[n, "name"] <- colnames(genre_cols[n])  # Necessário para o plot no final
+  top_genres[n, "i"] <- 3 + n  # Id da coluna
+}
+# Aqui ordenamos de forma reversa e selecionamos apenas os 10 primeiros
+top_genres <- top_genres[rev(order(top_genres$count)),] %>% head(n=10)
+
+# Função que retorna o intervalo de confiança da variância.
+var_ic = function(n) {
+  x <- movies.ratings %>% filter(movies.ratings[[n]] == 1)
+  b = bootstrap(x$rating, statistic = var)
+  return(CI.percentile(b, probs = c(.005, .995)))
+}
+
+# Montando o data frame para o plot.
+boot_plot <- data.frame(genre = c(), upper = c(), mean = c(), lower = c())
+for (n in 1:nrow(top_genres)) {
+  ic <- var_ic(top_genres[n,]$i)
+  boot_plot <- rbind(boot_plot, data.frame(
+    genre = top_genres[n,]$name,
+    mean = mean(ic),
+    lower = ic[1],
+    upper = ic[2]
+  ))
+}
+boot_plot <- arrange(boot_plot, desc(mean))
+
+# Plot.
+boot_plot %>% ggplot(aes(x = 1:nrow(boot_plot), y = mean)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width=.3, size=1, color = "coral") +
+  xlab("Gêneros") +
+  ylab("Variância das Avaliações") +
+  scale_x_discrete(limits = c(
+    "Horror", "SciFi", "Comedy", "Action", "Adventure", "Thriller",  "Romance", "Crime",  "Mystery", "Drama")) + 
+  theme_bw() +
+  theme(axis.ticks=element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  geom_point(size = 1, color = "black")
+```
