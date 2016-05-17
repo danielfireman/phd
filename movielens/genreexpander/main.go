@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -29,6 +30,8 @@ var genreMap = map[string]int{
 	"Western":     17,
 }
 
+var yearRegexp = regexp.MustCompile(`\(\d+\)`)
+
 func main() {
 	records, err := csv.NewReader(os.Stdin).ReadAll()
 	if err != nil {
@@ -42,22 +45,35 @@ func main() {
 		}
 		genres := strings.Split(members[2], "|")
 
-		// id, title, #genres counter of all genres
-		newRow := make([]string, 3+len(genreMap))
+		// id, title, year, #genres
+		nFixedFields := 4
+		newRow := make([]string, nFixedFields+len(genreMap))
 		newRow[0] = members[0]
-		newRow[1] = fmt.Sprintf("\"%s\"", members[1])
+
+		title := members[1]
+		// Making sure title is treated as string
+		newRow[1] = fmt.Sprintf("\"%s\"", title)
+
+		// Extracting year
+		newRow[2] = ""
+		matches := yearRegexp.FindAllString(title, -1)
+		if len(matches) > 0 {
+			withParenthesis := matches[len(matches)-1]
+			newRow[2] = withParenthesis[1 : len(withParenthesis)-1]
+		}
+
 		numGenres := 0
 		for _, g := range genres {
 			if g != "(no genres listed)" {
-				newRow[3+genreMap[g]] = "1"
+				newRow[nFixedFields+genreMap[g]] = "1"
 				numGenres++
 			}
 		}
-		newRow[2] = fmt.Sprintf("%d", numGenres)
+		newRow[nFixedFields-1] = fmt.Sprintf("%d", numGenres)
 		// Filling out genres
-		for i, s := range newRow {
+		for i, s := range newRow[nFixedFields:] {
 			if s == "" {
-				newRow[i] = "0"
+				newRow[i+nFixedFields] = "0"
 			}
 		}
 		fmt.Println(strings.Join(newRow, ","))
