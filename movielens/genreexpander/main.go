@@ -56,7 +56,8 @@ func processRow(members []string) string {
 
 	title := members[1]
 	// Making sure title is treated as string
-	newRow[1] = fmt.Sprintf("\"%s\"", title)
+	// Need to escape \"s
+	newRow[1] = fmt.Sprintf("\"%s\"", strings.Replace(title, "\"", "\"\"", -1))
 
 	// Extracting year
 	newRow[2] = ""

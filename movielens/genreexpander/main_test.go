@@ -58,6 +58,10 @@ func TestProcessRow(t *testing.T) {
 			`126929,Li'l Quinquin,(no genres listed)`,
 			`126929,"Li'l Quinquin",,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0`,
 		},
+		{
+			`7789,"11'09""01 - September 11 (2002)",Drama`,
+			`7789,"11'09""01 - September 11 (2002)",2002,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0`,
+		},
 	}
 	for _, d := range dataTable {
 		members, err := csvReader(strings.NewReader(d.input)).ReadAll()
