@@ -1,0 +1,132 @@
+---
+title: "FPCC 3 - Atividade 1"
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "Março 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+```
+
+Relembrando algumas definições apresentadas no documento [*um modelo algébrico*](https://www.google.com/url?q=https://docs.google.com/viewer?a%3Dv%26pid%3Dexplorer%26chrome%3Dtrue%26srcid%3D0BxYU82vErc8xOGU4MmM1NjQtZGJhYy00MjVkLTg1OTgtNWI5OTQ2YTU1MjEy%26hl%3Den%26authkey%3DCNeLsv4L&sa=D&ust=1458582490682000&usg=AFQjCNH2B9iit30tQah3_ihNwbm5hj8aTw):
+
+   * $D$ um conjunto de documentos
+   * $T \subseteq D$, um conjunto de treinamento e
+   * $E = D - T$, o conjunto de execução correspondente
+
+## Parte 1
+
+Modelar matematicamente a função $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert)$, supondo seja aproximada usando 2 segmentos lineares:
+
+   1. Cresce linearmente de 0 a 0.9 quando $\left\vert{T}\right\vert$ varia de 0 a 20% de $\left\vert{D}\right\vert$
+   2. Constante em 0.9 para $\left\vert{T}\right\vert$ maior que 20% de $\left\vert{D}\right\vert$
+
+Vamos começar descrevendo matematicamente o primeiro segmento linear, qual deve obedecer a uma função geral $qualidade(d, T) =a \cdot \left\vert{T}\right\vert + b$. A partir da definição, temos os dois pontos extremos:
+$$
+\begin{aligned}
+Q(\left\vert{D}\right\vert,\, 0) = & a \cdot 0 + b = 0 \implies b = 0 \\
+Q(\left\vert{D}\right\vert,\, 0.2 \cdot \left\vert{D}\right\vert) = & a \cdot 0.2 \cdot \left\vert{D}\right\vert + 0 = 0.9 \implies a = \left( \frac{0.9}{0.2 \left\vert{D}\right\vert} \right) \implies a = \frac{4.5}{\left\vert{D}\right\vert}
+\end{aligned}
+$$
+
+A segunda parte da equação é uma constante, $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert) = 0.9$. Combinando essas duas definições temos a seguinte definição matemática da função $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert)$:
+
+$$
+Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert) =
+\left\{
+  \begin{aligned}
+    \frac{4.5}{\left\vert{D}\right\vert} \left\vert{T}\right\vert & \, , \, 0 \leq \left\vert{T}\right\vert \leq 0.2 \left\vert{D}\right\vert \, e \, \left\vert{D}\right\vert\ > 0  \\
+    0.9 & \, , \, \left\vert{T}\right\vert > 0.2  \left\vert{D}\right\vert
+  \end{aligned}
+\right.
+$$
+
+Abaixo mostramos o código na linguagem R para cálculo da função de utilidade e gráfico de $Q(\left\vert{D}\right\vert, \left\vert{T}\right\vert)$ para $\left\vert{D}\right\vert$ variando entre 0 e 500 e $\left\vert{D}\right\vert = 1000$.
+
+```{r echo=TRUE, fig.width=5, fig.height=2.5, fig.align='center'}
+
+qualidade <- function(t, d) {
+  if (t < 0.2*d) {
+      return((4.5*t)/d)
+  }
+   return(0.9)
+}
+
+t <- seq(500)
+
+ggplot(data.frame(x=t, q=sapply(t, qualidade, d=1000)), aes(x = x, y = q)) +
+  geom_point(alpha = 0.2) +
+  theme_bw() +
+  scale_y_continuous(name="qualidade(d, T)", breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9)) +
+  xlab("|T|")
+```
+
+## Parte 2
+
+Ainda usando Cobb-Douglas como função de utilidade, devemos achar o valor ótimo de $\left\vert{T}\right\vert$ para $|D|=1000$ e $\alpha=0.2$ e $\alpha=0.95$.
+
+Relembrando a função de utilidade:
+
+$$
+UtilidadeP(P(T), Q) = P(T)^{\alpha}Q^{1-\alpha}, 0 \leq\,\alpha\,\leq 1
+$$
+
+E $P(T)$ é o “complemento normalizado do custo”, o qual pode ser descrito:
+
+$$
+P(T) = 1 - \frac{C(T)}{C(D)}
+$$
+
+Como foi descrito no documento, a função utilizada para custo foi uma simplificação: $custo(d) = tamanho(d)$. Assim, temos a função de utilidade representada por:
+
+$$
+UtilidadeP(P(T), Q) = \left( 1 - \frac{\sum_{d \in T}^{tamanho(d)}}{\sum_{d \in T}^{tamanho(d)}} \right)^{\alpha} \left( \frac{\left\vert{T}\right\vert}{\left\vert{T}\right\vert - 1} \right)^{1- \alpha}
+$$
+
+Para efeitos do exercício, vamos supor que todos os documentos tem uma página. Com essa simplificação e utilizando a definição de qualidade explicitada acima temos dois casos:
+
+* Para $0 \leq \left\vert{T}\right\vert \leq 0.2 \left\vert{D}\right\vert \, e \, \left\vert{D}\right\vert\ > 0$:
+$$
+UtilidadeP(P(T), Q) = \left( 1 - \frac{\left\vert{T}\right\vert}{\left\vert{D}\right\vert} \right)^{\alpha} \left( \frac{4.5}{\left\vert{D}\right\vert} \left\vert{T}\right\vert \right)^{1- \alpha}
+$$
+
+* Para $\left\vert{T}\right\vert > 0.2 \left\vert{D}\right\vert$:
+$$
+UtilidadeP(P(T), Q) = \left( 1 - \frac{\left\vert{T}\right\vert}{\left\vert{D}\right\vert} \right)^{\alpha} \left( 0.9 \right)^{1- \alpha}
+$$
+
+Abaixo mostramos o código R contendo a função de utilidade, bem como plotamos o gráfico que nos permite analisar os pontos de máximo: 
+
+```{r echo=TRUE, fig.width=5, fig.height=2.5, fig.align='center'}
+utilidade <- function(t, d, alpha) {
+  return(((1 - (t/d))^(alpha))*(qualidade(t, d))^(1-alpha))
+}
+
+ggplot(data.frame(x=t, u=sapply(t, utilidade, d=1000, alpha=0.2)), aes(x = x, y = u)) +
+  geom_point(alpha = 0.2) +
+  theme_bw() +
+  xlab("|T|") +
+  ylab("UtilidadeP")
+
+ggplot(data.frame(x=t, u=sapply(t, utilidade, d=1000, alpha=0.95)), aes(x = x, y = u)) +
+  geom_point(alpha = 0.2) +
+  theme_bw() +
+  xlab("|T|") +
+  ylab("UtilidadeP")
+```
+
+Através desses gráficos vemos que o valor máximo da função de utilidade ocorre aproximadament em $|T|=200$ e $|T|=50$ para $\alpha=0.2$ e $\alpha=0.95$ respectivamente. Para confirmação, podemos utilizar a fórmula:
+
+$$
+\left\vert{T}\right\vert_{ótimo}=\left\vert{T}\right\vert \, tal\,que \, \frac{\partial (UtilidadeP(P(T), Q))}{\partial \left\vert{T}\right\vert } = 0
+$$
+ 
+Ainda usando R para resolver essa equação, vamos usar a função stats::optimise.
+
+```{r}
+optimise(utilidade, interval = c(0,500), d=1000, alpha=0.2, maximum = TRUE)
+optimise(utilidade, interval = c(0,500), d=1000, alpha=0.95, maximum = TRUE)
+```

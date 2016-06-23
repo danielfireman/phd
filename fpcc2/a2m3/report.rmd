@@ -1,0 +1,253 @@
+---
+title: "FPCC2 Atividade 2 Milestone 3"
+date: "April 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r echo=TRUE, message=FALSE}
+require("dplyr")
+require("ggplot2")
+require("cowplot")
+require("ggbiplot")
+require("reshape2")
+require("cluster")
+```
+
+## Objetivo
+
+O objetivo principal desse relatório é entender melhor os gastos agrupados por UF e por partidos. Em particular, sem perder as informações contidas no campo *txtDescricao*, que contém as categorias principais de despesas efetuadas. As informações nesse campo pode ser usada para definir de forma mais precisa os agrupamentos. Por exemplo, ao invés de comparar valores líquidos somados de despesas com papelaria e gastos com passagens aéreas, podemos usar o gasto com cada uma dessas categorias na análise. O conjunto de dados estudados tem 18 categorias distintas.
+
+## Análise exploratória inicial
+
+Vamos discutir os tipos de gastos. Para tal, selecionamos as seguintes variáveis:
+
+* codLegislatura: Indica a que legislatura pertence a despesa
+* txtDescricao: Categoria que identifica o gasto
+* sgPartido: Partido que pertence o parlamentar que efetuou a despesa
+* sgUF: Sigla do estado associado ao parlamentar que efetuou a despesa
+* vlrLiquido: Valor líquido da despesa
+
+```{r echo=TRUE, message=FALSE}
+d <- read.csv("../a1m2/AnoAtual.csv", stringsAsFactors = FALSE)
+d %>% select(codLegislatura, vlrLiquido) %>% summary()
+```
+
+Uma análise inicial dos dados escolhidos nos mostra que:
+
+* Temos dados de duas legislaturas (54 e 55): escolhemos trabalhar apenas com a legislatura 55
+* O valor líquido tem possui valores negativos: esse fato acontece em geral quando há devolução de dinheiro (i.e. passagem cancelada). Como proporcionalmente esse valor equivale a menos de 1% do total de gastos escolhemos trabalhar apenas com valores positivos.
+
+```{r echo=TRUE, message=FALSE}
+d <- d %>% filter(codLegislatura == 55 & vlrLiquido > 0)
+
+aggregate(vlrLiquido ~ txtDescricao, d , "sum") %>% arrange(desc(vlrLiquido))
+```
+
+Com a agregação acima, vemos também que existem duas categorias relacionadas só que com nomes diferentes: "Emissão Bilhete Aéreo" e "PASSAGENS AÉREAS". Optamos por agregar esses dois tipos:
+
+```{r echo=TRUE, message=FALSE}
+index <- d$txtDescricao == "Emissão Bilhete Aéreo"
+d$txtDescricao[index] <- "PASSAGENS AÉREAS"
+```
+
+Por fim, vamos realizar o primeiro nível de agregação e a transformação dos dados no formato longo. Este formato nos permitira estudar os grupos-objetivo (UFs e partidos), utilizando a informação dos 16 tipos de gastos: 
+
+```{r echo=TRUE, message=FALSE}
+data.aggregate <- aggregate(vlrLiquido ~ sgUF+sgPartido+txtDescricao, d , "sum")
+summary(data.aggregate)
+
+d.wide <- dcast(data.aggregate,
+  sgUF+sgPartido~txtDescricao,
+  value.var = "vlrLiquido",
+  fun.aggregate = sum)
+```
+
+## Redução de dimensionalidade
+
+Terminada a fase de análise exploratória e limpeza dos dados, passamos a fase de visualização dos agrupamentos. Como temos 16 variáveis (dimensões) iremos utilizar a técnica PCA (Principal Component Analysis) para de redução de dimensionalidade. A idéia é conseguir capturar o máximo da variância contida nas 16 dimensões no plano 2D. Abaixo mostramos a um resumo da primeira execução do PCA. Notemos que os últimos componentes principais explicam muito pouco da variância dos dados.
+
+```{r echo=TRUE, message=FALSE}
+d.pca <- prcomp(d.wide[,3:18], scale. = TRUE, center=TRUE)
+summary(d.pca)
+```
+
+Esse grande espalhamento (e número de fatores), torna a visualização muito difícil mesmo utilizando uma técnica como o PCA. Uma segunda análise nos dados agregados nos permite ver que os top 4 tipos de despesas correspondem a quase 60% do total de despesas. Optamos por usar esses 4 e agregar os demais tipos:
+
+```{r echo=TRUE, message=FALSE}
+index.outros <- data.aggregate$txtDescricao != "DIVULGAÇÃO DA ATIVIDADE PARLAMENTAR." &
+  data.aggregate$txtDescricao != "PASSAGENS AÉREAS" &
+  data.aggregate$txtDescricao != "MANUTENÇÃO DE ESCRITÓRIO DE APOIO À ATIVIDADE PARLAMENTAR" &
+  data.aggregate$txtDescricao != "LOCAÇÃO OU FRETAMENTO DE VEÍCULOS AUTOMOTORES"
+data.aggregate.outros <- data.aggregate
+data.aggregate.outros$txtDescricao[index.outros] <- "OUTROS"
+```
+
+O próximo passo é passar esse novo conjunto de dados no formato largo e seguir com o cálculo do PCA:
+
+```{r echo=TRUE, message=FALSE}
+d.wide.outros <- dcast(data.aggregate.outros,
+  sgUF+sgPartido~txtDescricao,
+  value.var = "vlrLiquido",
+  fun.aggregate = sum)
+d.wide.outros <- rename(d.wide.outros, c(
+  "sgUF"="UF",
+  "sgPartido"="Partido",
+  "MANUTENÇÃO DE ESCRITÓRIO DE APOIO À ATIVIDADE PARLAMENTAR"="MANUT. DE ESCRITÓRIO",
+  "DIVULGAÇÃO DA ATIVIDADE PARLAMENTAR."="DIVULGAÇÃO",
+  "LOCAÇÃO OU FRETAMENTO DE VEÍCULOS AUTOMOTORES"="LOCAÇÃO OU FRET. VEÍCULOS"))
+summary(d.wide.outros)
+
+d.pca.outros <- prcomp(d.wide.outros[,3:7], scale. = TRUE, center=TRUE)
+summary(d.pca.outros)
+```
+
+Para diminuir os danos causados pelo *skewness* dos dados, usamos os parâmetros *scale* e *center* no cálculo do PCA. Com o resumo da primeira interação, podemos notar que todos os continuam colaborando de forma muito parecida para explicação da variância total. A diferença é que precisamos de apenas 4 componentes para explicar mais de 90% da variância, o que torna a visualização muito mais simples. O agrupamento dos pontos no gráfico abaixo permite ter uma idéia visual dessa correlação e que ela existe tanto no agrupamento por estado quanto no agrupamento por partido.
+
+<!--
+```{r echo=TRUE, message=FALSE, fig.asp=0.5}
+plot_pve <- function(prout){
+  pr.var <- prout$sdev^2
+  pve <- pr.var / sum(pr.var)
+  df = data.frame(x = 1:NROW(pve), y = cumsum(pve))
+  ggplot(df, aes(x = x, y = y)) + 
+    geom_point(size = 3) + 
+    geom_line() + 
+    labs(x='Componente Principal', y = 'Proporção Cumulativa da Variância') +
+    theme_bw() +
+    scale_y_continuous(breaks = seq(0, 1, by=0.2)) +
+    scale_x_continuous(breaks = seq(0, 5))
+}
+plot_pve(d.pca.outros)
+```
+-->
+
+```{r echo=TRUE, message=FALSE, fig.align="center"}
+ggbiplot(d.pca.outros,
+  obs.scale = 1,
+  var.scale = 1,
+  ellipse = TRUE,
+  circle = TRUE,
+  alpha = 0.5,
+  groups = c("UF","Partido")) +
+  theme_cowplot() +
+  xlab("PC1 (Explica 57.4% da variância)") +
+  ylab("PC2 (Explica 15.2% da variância)") +
+  theme(
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    legend.position="top",
+    legend.title = element_blank()) +
+  guides(color=guide_legend(
+    override.aes = list(alpha = 1)))
+```
+
+Uma vez que usamos uma *scale=TRUE*, os valores das variavéis foram normalizados e centrados no zero. Essa técnica permite o desenho de um círculo que engloba o agrupamento principal, o que nos ajuda a ver o agrupamento tanto no nível de partido quanto no nível de UF.
+
+Os pontos no interior do círculo são explicados pelos dois components principais utilizados no gŕafico. A área interna as elipses englobam 68.8% dos pontos de cada um dos grupos. Como os pontos, e as elipses estão posicionados de forma similar, concluimos que as variâncias nos gastos de ambos os grupos (UF e Partidos) são explicadas de forma similar.
+
+Notamos também que há poucos *outliers* no sentido de locação e fretamento de veículos e muitos com despesas na área de divulgação.
+
+## Agrupamento
+
+Com relação a agrupamento optamos por utilizar os mesmos dados porém analisando separadamente UF e partido. Em ambas as análises utilizaremos dois métodos de agrupamento: agrupamento hierárquico e k-means. Começaremos pelo agrupamento por estado.
+
+```{r echo=TRUE, message=FALSE}
+data.aggregate.uf <- aggregate(vlrLiquido ~ sgUF+txtDescricao, d , "sum")
+d.wide.uf <- dcast(data.aggregate.uf,
+  sgUF~txtDescricao,
+  value.var = "vlrLiquido",
+  fun.aggregate = sum)
+d.wide.uf.scaled <- scale(d.wide.uf[,2:17])
+rownames(d.wide.uf.scaled) <- d.wide.uf$sgUF 
+plot(hclust(dist(d.wide.uf.scaled), method="average"),
+     labels=d.wide.uf$sgUF,
+     main = "Agrupamento Hierárquico",
+     xlab = "",
+     ylab = "Altura da hierarquia",
+     sub = "")
+```
+
+O gráfico acima mostra a hierarquia utilizada no agrupamento por estado. Podemos ter uma primeira idéia das similaridades entre os grupos, como por exemplo os estados da região sugeste somado ao RS. 
+
+Note que utilizamos a média como base para criação dos agrupamentos, por dois motivos: i) porque é intuitivo dado que estamos comparando depesas e ii) pois esse método é mais próximo do que é usado pelo k-means, tornando as análises complementares e mais ricas. 
+
+O próximo passo na análise é a definição da quantidade de centros utilizadas pelo k-means. Podemos usar como dica a altura da hierarquia que nos mostra um nível de detalhe razoável, no caso 4. Outra forma de tentar estimar é através de "joelhos" no gráfico de somas.
+
+```{r echo=TRUE, message=FALSE, fig.align="center", fig.asp=0.5}
+wss <- function(d) {
+  wss <- (nrow(d)-1)*sum(apply(d, 2, var))
+  for (i in 2:15) wss[i] <- sum(kmeans(d, centers=i, iter.max = 1000, nstart = 25)$withinss)
+  plot(1:15,
+       wss,
+       type="b",
+       xlab="Número de agrupamentos",
+       ylab="Grupos contento somas quadráticas")
+}
+wss(d.wide.uf.scaled)
+```
+
+Note que a curva aumenta a confiança no valor 4 para o número de agrupamentos. Outro fator importante a notar é a utilização do número máximo de interações 1000 (iter.max) e número inicial de conjuntos aleatórios para iniciar a geração dos agrupamentos. Abaixo mostramos o gráfico gerado com os agrupamentos:
+
+```{r echo=TRUE, message=FALSE, fig.align="center", warning=FALSE, fig.asp=0.6}
+d.kmeans.uf <- kmeans(
+  d.wide.uf.scaled,
+  centers=4,
+  iter.max = 1000,
+  nstart = 25)
+clusplot(d.wide.uf.scaled,
+         d.kmeans.uf$cluster,
+         color=TRUE,
+         shade=TRUE,
+         lines=0,
+         labels = 3,
+         main="Gastos por UF",
+         ylab = "",
+         xlab = "",
+         axes = FALSE,
+         sub = "")
+```
+
+Os eixos nesse gráfico explicam 73.46 % da variação dos pontos. Um fato interessante que o gráfico mostra é o estado de Minas Gerais ser diferente o suficiente para estar sozinho num mesmo agrupamento. Na mesma linha vemos que SP e RJ possuem características similares de despesas. 
+
+A análise dos agrupamentos por partidos é efetuada de forma similar. Mostraremos todo o código e explanaremos sobre o resultado final.
+
+```{r echo=TRUE, message=FALSE, fig.align="center", warning=FALSE}
+data.aggregate.partido <- aggregate(vlrLiquido ~ sgPartido+txtDescricao, d , "sum")
+d.wide.partido <- dcast(data.aggregate.partido,
+  sgPartido~txtDescricao,
+  value.var = "vlrLiquido",
+  fun.aggregate = sum)
+d.wide.partido.scaled <- scale(d.wide.partido[,2:17])
+rownames(d.wide.partido.scaled) <- d.wide.partido$sgPartido
+
+plot(hclust(dist(d.wide.partido.scaled), method="average"),
+     labels=d.wide.uf$sgPartido,
+     main = "Agrupamento Hierárquico",
+     xlab = "",
+     ylab = "Altura da hierarquia",
+     sub = "")
+
+wss(d.wide.partido.scaled)
+
+d.kmeans.partido <- kmeans(d.wide.partido.scaled,centers=5, iter.max = 1000, nstart = 25)
+clusplot(d.wide.partido.scaled,
+         d.kmeans.partido$cluster,
+         color=TRUE,
+         shade=TRUE,
+         lines=0,
+         labels = 3,
+         main="Gastos por Partido",
+         ylab = "",
+         xlab = "",
+         axes = FALSE,
+         sub = "")
+```
+
+Os eixos no gráfico de agrupamento por partido explicam 85.52% na variação dos pontos. Somado a isso notamos a diferença no número de agrupamentos (5) e que o PT tem características diferences o suficiente para ter um agrupamento contendo somente esse partido. Um outro agrupamento notável é PSDB e PMDB.

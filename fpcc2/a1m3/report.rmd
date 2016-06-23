@@ -1,0 +1,334 @@
+---
+title: "Atividade no Github no primeiro dia do ano"
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "Março, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require("reshape2")
+require("ggplot2")
+require("cowplot")
+require("dplyr")
+require("moments")
+require("gridExtra")
+
+source("data_load.R")
+```
+
+## Perguntas
+
+O tema central desse relatório é o primeiro dia do ano. O objetivo principal é tentar entender um pouco melhor a atividade dos milhares usuários e repositórios do Github nesse dia que, a priori, poderia ser usado para descanso.
+
+1. Como a atividade é distribuída durante as horas do dia?
+1. Que tipos de atividades são mais comuns e como elas se distribuem?
+1. Como se caracterizam os repositórios que mais tem atividade?
+1. Como a atividade no dia 01 de janeiro se compara a um dia qualquer (não feriado)?
+
+## Dados
+
+Os dados disponibilizados pelo professor não são suficientes para responder as perguntas, uma vez que as observações são agregadas por trimestre. A solução seria processar os dados exportados pelo [Github Archive](https://www.githubarchive.org/), uma vez que a granularidade é o segundo. Estes logs encontram-se comprimidos no formato gzip e cada linha do arquivo é a serialização em texto de um objeto do tipo [JSON](http://www.json.org/). Como este não é um formato ideal para trabalhar em [R](https://www.r-project.org/), a primeira coisa a fazer foi criar uma ferramenta de conversão dos mesmos para [CSV](https://en.wikipedia.org/wiki/Comma-separated_values). 
+
+Para tal, criamos a ferramenta [github/archive2csv](https://github.com/danielfireman/phd/tree/master/github/archive2csv). A ferramenta descomprime o conteúdo que recebe via entrada padrão e, para cada linha, decodifica o objeto JSON extraindo os campos de interesse. Depois de extraído e tratado o conteúdo, uma linha no formato CSV é então impressa na saída padrão.
+
+Além de facilitar o trabalho de análise, essa conversão também diminui a quantidade de dados manipulados, uma vez que só transportamos campos que iremos utilizar na análise. Vamos apresentar algumas informações sobre os dados para dar uma ideia do dessa diferença:
+
+| Data | #Observações | Tamanho json.gz (MB) | Tamanho CSV (MB) |
+|---|---|---|---|
+| 2012-01-01 | 48,013  | 9.5 | 2.4 |
+| 2013-01-01 | 98,171 | 26  | 4.7 |
+| 2014-01-01 | 167,135 |46  | 8.1 |
+| 2015-01-01 | 144,090 |68  | 12 |
+
+Os campos extraídos são:
+
+* Type: Tipo do evento associado a observação
+* Repo: Nome completo do repositório (incluindo usuário)
+* Year: Ano em que a observação ocorreu
+* Month: Mês em que a observação ocorreu (1-12)
+* Day: Dia em que a observação ocorreu (1-31)
+* Hour: Hora (UTC) em que a observação ocorreu (0-24)
+* Min: Minuto em que a observação ocorreu (0-60)
+* Sec: Segundo em que a observação ocorreu (1-60) 
+
+## Como a atividade é distribuida durante as horas do dia?
+
+Vamos começar olhando apenas as quantidades de atividades:
+
+| Ano | #Observações |
+|---|---|
+| 2012 | 48,013 |
+| 2013 | 98,171 |
+| 2014 | 167,135 |
+| 2015 | 144,090 |
+
+Podemos notar que houve um crescimento de 200%+ de 2012 para 2013 e essa taxa quase se manteve entre 2013 e 2014. Já de 2014 para 2015 a atividade diminuiu. Indo um passo mais fundo, vamos comparar a atividade com relação as horas do dia:
+
+```{r comment=NA}
+summary(data.2012.01.01$Hour)
+summary(data.2013.01.01$Hour)
+summary(data.2014.01.01$Hour)
+summary(data.2015.01.01$Hour)
+```
+
+Vemos que elas tem características gerais parecidas, por exemplo, a média gira em torno de meio dia. Um fato que podemos notar é que os desenvolvedores estão começando os trabalhos mais cedo a medida que o tempo passa. O gráfico abaixo nos permite ver melhor como são distribuídas as atividades em relação ao dia:
+
+```{r fig.asp=0.5, fig.align='center'}
+ggplot() +
+  geom_line(aes(Hour,n, colour=Year), data=count(data.2012.01.01, Year, Hour)) +
+  geom_point(aes(Hour,n, shape="0", color=Year), data=count(data.2012.01.01, Year, Hour)) +
+  geom_line(aes(Hour,n, colour=Year), data=count(data.2013.01.01, Year,Hour)) +
+  geom_point(aes(Hour,n, shape="1", color=Year), data=count(data.2013.01.01, Year, Hour)) +
+  geom_line(aes(Hour,n, colour=Year), data=count(data.2014.01.01,Year, Hour)) +
+  geom_point(aes(Hour,n, shape="2", color=Year), data=count(data.2014.01.01, Year, Hour)) +
+  geom_line(aes(Hour,n, color=Year), data=count(data.2015.01.01, Year,Hour)) +
+  geom_point(aes(Hour,n, shape="3", color=Year), data=count(data.2015.01.01, Year, Hour)) +
+  scale_colour_gradient(high = "red", low="green", guide = "legend") +
+  scale_x_continuous(breaks=c(seq(0,24, by=4))) +
+  ylab("Atividade (#eventos)") +
+  xlab("Hora do dia") +
+  scale_shape(guide="none")  # Removing shape legend (guide)
+```
+
+O gráfico confirma que houve aumento da atividade nas primeiras horas do dia a cada ano e mostra que a atividade tende a cair a medida que se aproxima a meia noite UTC. Também deixa clara a enorme diferença nos padrões de atividade no decorrer do dia. Tentamos (sem sucesso) explicar os vales na linha referente ao ano de 2015. Checamos o site [currentlydown.com](http://currentlydown.com/github.com#2015-01-01), porém houve interrupção no serviço.
+
+## Que tipos de atividades são mais comuns e como elas se distribuem?
+
+Começamos essa análise chamando a atenção para a quantidade de tipos diferentes no decorrer dos anos:
+
+| Ano | #Tipos de Eventos |
+|---|---|
+| 2012 | 16 |
+| 2013 | 16 |
+| 2014 | 15 |
+| 2015 | 14 |
+
+Além disso, os eventos mudam com o tempo, por exemplo, em 2013 o evento ForkApplyEvent foi removido e o evento PullRequestReviewCommentEvent foi adicionado. Para simplificar a análise, vamos nos ater aos eventos com maior número de ocorrências:
+
+```{r comment=NA}
+prop <- data.01.01 %>% count(Type) %>% arrange(desc(n)) %>% head(n=3)
+prop$Prop <- prop$n / nrow(data.01.01)
+prop
+```
+
+Podemos notar que os eventos de [Push](https://developer.github.com/v3/activity/events/types/#pushevent), [Create](https://developer.github.com/v3/activity/events/types/#createevent) e [Watch](https://developer.github.com/v3/activity/events/types/#watchevent) representaram mais de 70% do total das observações. Focando nesses eventos, vamos avaliar como as observações se distribuem no decorrer dos anos:
+
+```{r fig.asp=0.5, fig.align='center'}
+c2 <-  filter(data.2012.01.01, Type=="PushEvent" | Type=="CreateEvent" | Type=="WatchEvent") %>%
+  count(Type) %>% arrange(desc(n))
+c3 <-  filter(data.2013.01.01, Type=="PushEvent" | Type=="CreateEvent" | Type=="WatchEvent") %>%
+  count(Type) %>% arrange(desc(n))
+c4 <-  filter(data.2014.01.01, Type=="PushEvent" | Type=="CreateEvent" | Type=="WatchEvent") %>%
+  count(Type) %>% arrange(desc(n))
+c5 <-  filter(data.2015.01.01, Type=="PushEvent" | Type=="CreateEvent" | Type=="WatchEvent") %>%
+  count(Type) %>% arrange(desc(n))
+
+comb <- data.frame(Type=c("Push","Create","Watch"),
+                   `2012`=c2$n, `2013`=c3$n, `2014`=c4$n, `2015`=c5$n,
+                   check.names = F)
+
+comb.m <- melt(comb, id.vars = "Type")
+colnames(comb.m) <- c("Type", "Ano", "value")
+
+ggplot(comb.m, aes(x=Type, y=value/1000)) +
+  xlab("Tipo de evento") + 
+  ylab("#Observações (*1000)") + 
+  geom_bar(aes(fill=Ano), 
+          position = "dodge", 
+          stat="identity")
+```
+
+Interessante notar que os eventos Create permanecem estáveis, enquanto que Push e Watch parecem demonstrar um crescimento parecido (guardadas as devidas proporções).
+
+## Como se caracterizam os repositórios que mais tem atividade?
+
+Optamos por remover os repositórios que não tinham identificadores ou os que tem o identificador "/" pois não tínhamos como associar repositórios válidos a esses valores.
+
+```{r}
+repoCount.2012 <- data.2012.01.01 %>% filter(Repo != "" & Repo != "/") %>%
+  count(Repo) %>% arrange(desc(n))
+repoCount.2013 <- data.2013.01.01 %>% filter(Repo != "" & Repo != "/") %>%
+  count(Repo) %>% arrange(desc(n))
+repoCount.2014 <- data.2014.01.01 %>% filter(Repo != "" & Repo != "/") %>%
+  count(Repo) %>% arrange(desc(n))
+repoCount.2015 <- data.2015.01.01 %>% filter(Repo != "" & Repo != "/") %>%
+  count(Repo) %>% arrange(desc(n))
+```
+
+<style>
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels*/
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+</style>
+
+Vamos começar analisando um resumo das atividades por repositório entre os anos de 2012 e 2015. 
+
+| Data | Min | Max | Média | Mediana |
+|---|---|---|---|---|
+| 2012-01-01 | 1 | 8754 | 3.548 | 1 |
+| 2013-01-01 | 1 | 5681 | 3.135 | 1 |
+| 2014-01-01 | 1 | 692  | 3.105 | 2 |
+| 2015-01-01 | 1 | 3688 | 2.903 | 1 |
+
+Notemos que valor máximo de atividades é muito maior que a média em todos os anos considerados Para tentar entender melhor essa diferença, listamos abaixo 5 repositório com mais atividade em cada ano:
+
+<div class="col2">
+```{r comment=NA}
+head(repoCount.2012,n=5)
+head(repoCount.2013,n=5)
+```
+</div>
+
+<div class="col2">
+```{r comment=NA}
+head(repoCount.2014,n=5)
+head(repoCount.2015,n=5)
+```
+</div>
+
+
+Em 2012, temos que o repositório do projeto Eclipse ([eclipse/eclipse.platform.common](eclipse/eclipse.platform.common)) aparece no topo com um número de eventos muito maior que o segundo colocado ([bartaz/impress.js](https://github.com/impress/impress.js)). Na tentativa de entender melhor a atividade nesse repositório, vamos tentar agregar os tipos de eventos:
+```{r comment=NA}
+data.2012.01.01 %>% filter(Repo == "eclipse/eclipse.platform.common") %>% count(Type)
+```
+
+Notamos que todos os eventos são do tipo *Create*, o qual contabiliza a criação de repositórios, tags ou branchs. Tentamos encontrar algum log em [http://git.eclipse.org/c/platform/eclipse.platform.common.git], mas obtivemos sucesso. Nossa suspeita é que o repositório completo foi re-criado e para tal foram usados diversos *branches*. Uma vez que temos os dados, poderíamos avaliar os dados anexos em eventos do tipo *Create*, mas deixaremos essa análise a a análise do que aconteceu nos repositórios do anos seguintes para um trabalhos futuros.
+
+Outro fator que nos chama atenção é a diferença entre a média e a mediana. Essa diferença indica que a curva é enviesada. Para entender melhor essa diferença precisamos entender melhor o *skewness* e a moda dessas distribuições:
+
+```{r comment=NA}
+mode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+skew <- skewness
+data.frame(
+  Year=seq(2012,2015),
+  Skewness=c(skew(repoCount.2012$n),
+             skew(repoCount.2013$n),
+             skew(repoCount.2014$n),
+             skew(repoCount.2015$n)),
+  Mode=c(mode(repoCount.2012$n),
+         mode(repoCount.2013$n),
+         mode(repoCount.2014$n),
+         mode(repoCount.2015$n))
+)
+```
+
+Em primeiro lugar vemos que a moda e 1 em todos os casos. Sobre o *skewness* vemos que ele é positivo e, com exceção de 2014, bem grande. Esses dados nos sugerem uma curva de *cauda longa*, com a cauda em $1$. Essa hipótese é confirmada no plot abaixo. Para melhor visualização removemos os outliers descritos acima (repositório da plataforma eclipse) e o conjunto aos 500 repositórios com mais atividade.
+
+```{r fig.asp=0.7, fig.align='center'}
+p.2012 <- ggplot(repoCount.2012[2:500,], aes(reorder(Repo, -n), n)) +
+  geom_point(size=0.5, alpha=0.5) +
+  theme(axis.text.x = element_blank()) +
+  ylab("#Eventos") +
+  xlab("Repositórios") +
+  ggtitle("2012")
+p.2013 <- ggplot(repoCount.2013[2:500,], aes(reorder(Repo, -n), n)) +
+  geom_point(size=0.5, alpha=0.5) +
+  theme(axis.text.x = element_blank()) +
+  ylab("#Eventos") +
+  xlab("Repositórios") +
+  ggtitle("2013")
+p.2014 <- ggplot(repoCount.2014[1:500,], aes(reorder(Repo, -n), n)) +
+  geom_point(size=0.5, alpha=0.5) +
+  theme(axis.text.x = element_blank()) +
+  ylab("#Eventos") +
+  xlab("Repositórios") +
+  ggtitle("2014")
+p.2015 <- ggplot(repoCount.2015[3:500,], aes(reorder(Repo, -n), n)) +
+  geom_point(size=0.5, alpha=0.5) +
+  theme(axis.text.x = element_blank()) +
+  ylab("#Eventos") +
+  xlab("Repositórios") +
+  ggtitle("2015")
+grid.arrange(p.2012, p.2013,p.2014,p.2015, ncol=2, nrow=2)
+```
+
+## Como a atividade no dia 01 de janeiro se compara a um dia qualquer (não feriado)?
+
+Para realizar a comparação escolhemos o dia 20 de Outubro, pois além de ser dia útil é aniversário de Bruno Dias (parceiro que está aqui fazendo esse trabalho também). Foram coletadas 282786 observações.
+
+A ideia é fazer um apanhado geral de como as três dimensões exploradas nesse relatório até agora aparecem num dia útil e como elas se comparam com o dia 01 de janeiro de 2015. Vamos começar com um resumo geral da atividade durante as horas do dia:
+```{r fig.align="center", fig.asp=0.7}
+ggplot() +
+  geom_line(aes(Hour,n, colour = "blue"), data=count(data.2015.10.20, Hour)) +
+  geom_point(aes(Hour,n, shape="2", colour = "blue"), data=count(data.2015.10.20, Hour)) +
+  geom_line(aes(Hour,n, colour = "red"), data=count(data.2015.01.01,Hour)) +
+  geom_point(aes(Hour,n, shape="3", colour = "red"), data=count(data.2015.01.01, Hour)) +
+  scale_x_continuous(breaks=c(seq(0,24, by=2))) +
+  scale_color_manual(name="Datas",
+                     labels = c("20/10/2015", "01/01/2015"),
+                     values = c("blue", "red")) +
+  ylab("Atividade (#eventos)") +
+  xlab("Hora do dia") +
+  scale_shape(guide="none")  # Removing shape legend (guide)
+```
+
+Notamos que não existe um padrão de atividade. Uma hipótese para esse fato é que o Github é um repositório de código global, o que quer dizer que desenvolvedores podem estar espalhados pelo globo. Não temos os dados dos programadores, mas sem dúvida é dimensão interessante a ser explorada.
+
+O próximo fator a analisar são os tipos de eventos com mais atividades. Abaixo mostramos o código R e o resultado:
+
+<div class="col2">
+```{r}
+prop.2015.10.20 <- data.2015.10.20 %>% count(Type) %>% arrange(desc(n)) %>% head(n=3)
+prop.2015.10.20$Prop <- prop.2015.10.20$n / nrow(data.2015.10.20)
+prop.2015.10.20
+
+prop.2015.01.01 <- data.2015.01.01 %>% count(Type) %>% arrange(desc(n)) %>% head(n=3)
+prop.2015.01.01$Prop <- prop.2015.01.01$n / nrow(data.2015.01.01)
+prop.2015.01.01
+```
+</div>
+
+Notamos que os 3 eventos com maior atividade se mantém. Também vemos que esses 3 eventos dominam as atividades, totalizando mais de 50% do total de eventos. Abaixo plotamos como esses eventos se distribuem entre os repositórios:
+
+```{r echo=F, fig.asp=1.5}
+repoCount.2015.10.20.PushEvent <- data.2015.10.20 %>% filter(Repo != "" & Repo != "/" & Type=="PushEvent") %>% count(Repo) %>% arrange(desc(n))
+repoCount.2015.10.20.CreateEvent <- data.2015.10.20 %>% filter(Repo != "" & Repo != "/" & Type=="CreateEvent") %>% count(Repo) %>% arrange(desc(n))
+repoCount.2015.10.20.WatchEvent <- data.2015.10.20 %>% filter(Repo != "" & Repo != "/" & Type=="WatchEvent") %>% count(Repo) %>% arrange(desc(n))
+
+repoCount.2015.01.01.PushEvent <- data.2015.01.01 %>% filter(Repo != "" & Repo != "/" & Type=="PushEvent") %>% count(Repo) %>% arrange(desc(n))
+repoCount.2015.01.01.CreateEvent <- data.2015.01.01 %>% filter(Repo != "" & Repo != "/" & Type=="CreateEvent") %>% count(Repo) %>% arrange(desc(n))
+repoCount.2015.01.01.WatchEvent <- data.2015.01.01 %>% filter(Repo != "" & Repo != "/" & Type=="WatchEvent") %>% count(Repo) %>% arrange(desc(n))
+```
+```{r fig.align="center"}
+ggplot() +
+  geom_point(aes(Repo, n,colour="darkred", alpha=0.7, shape="a"),
+             data=repoCount.2015.10.20.PushEvent[1:1000,]) +
+  geom_point(aes(Repo, n, colour="yellow", alpha=0.7, shape="a"),
+             data=repoCount.2015.10.20.CreateEvent[1:1000,]) +
+  geom_point(aes(Repo, n, colour="gray", alpha=0.7, shape="a"),
+             data=repoCount.2015.10.20.WatchEvent[1:1000,]) +
+  geom_point(aes(Repo, n, colour="darkred", alpha=0.7, shape="b"),
+             data=repoCount.2015.01.01.PushEvent[1:1000,]) +
+  geom_point(aes(Repo, n, colour="yellow", alpha=0.7,shape="b"),
+             data=repoCount.2015.01.01.CreateEvent[1:1000,]) +
+  geom_point(aes(Repo, n, colour="gray", alpha=0.7,shape="b"),
+             alpha=0.7, data=repoCount.2015.01.01.WatchEvent[1:1000,]) +
+  scale_color_manual(name = "Tipos de Eventos",
+                     labels = c("PushEvent", "CreateEvent", "WatchEvent"),
+                     values = c("darkred", "darkblue", "darkgreen")) +
+  theme(axis.text.x = element_blank()) +
+  ylab("#Observações") +
+  xlab("Repositórios") +
+  scale_y_continuous(limits = c(0,4000), breaks=c(seq(0,4000, by=500))) +
+  scale_shape_discrete(name="Data", labels = c("20/01/2015", "01/01/2015")) +
+  scale_alpha_continuous(guide=FALSE)
+```
+
+O gráfico mostra a quantidade de eventos por repositório para os dias 01/01/2015 (círculo) e 20/10/2015 (triângulo). Fica claro que a imensa maioria dos repositórios fica abaixo dos 100 eventos. Também podemos perceber que as distribuições são parecidas. Por fim, vemos abaixo a distribuição ordenada dos eventos por repositório (3 outliers removidos). Notamos a propriedade de cauda longa se mantém.
+
+```{r fig.asp=0.5, fig.align="center"}
+repoCount.2015.10.20 <- data.2015.10.20 %>% filter(Repo != "" & Repo != "/") %>%
+  count(Repo) %>% arrange(desc(n))
+ggplot(repoCount.2015.10.20[4:500,], aes(reorder(Repo, -n), n)) +
+  geom_jitter(size=0.5, alpha=0.5, height = 30) +
+  theme(axis.text.x = element_blank()) +
+  ylab("#Eventos") +
+  xlab("Repositórios")
+```

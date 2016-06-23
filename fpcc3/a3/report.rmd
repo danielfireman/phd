@@ -1,0 +1,97 @@
+---
+title: "FPCC3 Atividade 3"
+output: word_document
+date: "Março 2016"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Questão 1
+
+Resuma muito brevemente o que foi alterado entre a primeira versão do artigo ([Um modelo algébrico](https://www.google.com/url?q=https://docs.google.com/viewer?a%3Dv%26pid%3Dexplorer%26chrome%3Dtrue%26srcid%3D0BxYU82vErc8xOGU4MmM1NjQtZGJhYy00MjVkLTg1OTgtNWI5OTQ2YTU1MjEy%26hl%3Den%26authkey%3DCNeLsv4L&sa=D&ust=1459261538913000&usg=AFQjCNHbBTAO__vX9VAxTBFzpE4Ru9wPLQ)) e a segunda versão ([Extração de Informação](https://www.google.com/url?q=https://docs.google.com/viewer?a%3Dv%26pid%3Dexplorer%26chrome%3Dtrue%26srcid%3D0BxYU82vErc8xYjgzMmY3M2MtNGJlYi00Yjg0LTg3Y2MtZDAyOWNlZjU3ZjQ4%26hl%3Den%26authkey%3DCKuIjIoP&sa=D&ust=1459261538914000&usg=AFQjCNFYMJu8ab7H8DXWhDw33Ba6Og8Dzg)).
+
+### Resposta
+
++ A segunda versão do artigo define um documento em função de uma sequência de passagens (*passages*), enquanto que na primeira o documento é a unidade primária
+
++ Os dois artigos fazem a suposição simplificadora que os documentos presentes em $T$ são escolhidos aleatoriamente, porém o segundo artigo menciona explicitamente que $T \cap E = \emptyset$
+
++ O primeiro artigo não define a função de similaridade $sim(d,x)$, já o segundo artigo define essa similaridade em função das passagens de $e \in E$ com base em $e \in T$ (F-Measure). O segundo artigo também menciona *recall* e *precision* para explicar F-Measure.
+
++ A primeira versão do artigo tenta predizer a qualidade considerando a probabilidade de o documento mais similar a $d$ estar em $T$ e assume que os documentos presentes em $T$ foram escolhidos de forma aleatória e independente ($qualidade(d, T)=\frac{|T|}{|D|-1}$). Já na segunda versão, a qualidade é definida usando uma função exponencial: $q(e)=\lambda_{1} - \lambda_{2} e^{- \lambda_{3}|T|},\, T \, \gt \, 0$
+
+## Questão 2
+
+A tomada de decisão se baseia em critérios. Os critérios podem ser organizados em uma hierarquia. A raíz dessa hierarquia é o critério global com o qual a decisão é tomada. Por exemplo, para comprar um carro, você poderia ter a hierarquia:
+
++ raiz
+     + custo
+          + preço negociado
+          + financiamento
+               + taxa de juros
+               + condições do empréstimo
+          + seguro
+          + extras
+          + depreciação
+     + beleza
+          + ...
+     + potência
+          + ...
+
+a) Formalizar o conceito de hierarquia de critérios.
+b) Formalmente, como representar os seguintes?
+     + o pai de um critério c
+     + o avô de um critério c
+     + os irmãos de um critério c
+     + o critério raiz
+     
+### Resposta
+
+a)
+
+Definimos um critério $C$ como a tupla $C = (Pai, Filhos, Val)$, onde:
+
++ $Val$: é uma função que tem como objetivo fornecer um valor (peso) ao critério $C$. $I_{Val} = \{ y \in \mathbb{R}\,,\, 0 \leq y \leq 1 \,\mid\,y = Val(Filhos) \}$.
++ $Pai$ é um critério que usa $C$ no cálculo do valor. $C \, \in \, Filhos_{Pai}$.
++ $Filhos$ é um conjunto de critérios usados para cáculo do valor de $C$. $Filhos = \{C',...\} \, \mid \, \forall C' \, \in \, Filhos, \, Pai_{C'} = C$.
+
+Usamos a notação $Filhos_{C}$,$Pai_{C}$ e $Val_{C}$ para nos referir aos $Filhos$, $Pai$ e $Valor$ do critério $C$, respectivamente. Também definimos:
+
++ $Filhos_{(\,)}= \emptyset$
++ $Pai_{(\,)}=(\,)$
++ $Val_{(\,)}=0$.
+
+Chamamos de *raiz* um critério que não possui $Pai$ ($Raiz\,=\,((\,) ,Filhos,Val)$) e definimos *hierarquia de critérios* $H=\{R\}$, onde $R$ é um critério do tipo raiz. Também definimos que $Raiz_{H} = R\,,\, \forall H \neq \emptyset$ e $Raiz_{\emptyset}=(\,)$.
+
+Para ilustrar, vamos criar a hierarquia $devo = \{comprar{\_}carro\}$ usando algum dos critérios retirados do exemplo dado:
+
+$$
+H = \left\{ \left( (\,), \, \{ custo\,,\, beleza  \},\, \frac{Val_{custo} + Val_{beleza}}{2}\, \right) \right\}
+$$
+
+Para completar a definição precisamos definir os demais critérios:
+
++ $beleza=(comprar{\_}carro, \{ \emptyset \} \,,\, 0.8)$
++ $preco=(custo,\{ \emptyset \} \,,\, 0.5)$
++ $seguro=(custo, \{ \emptyset \} \,,\, 0.5)$
++ $custo=(comprar{\_}carro, \{preco\,,\, seguro\} \,,\, Val_{preco} + Val_{seguro})$
+
+A partir dessa definição, temos que:
+
++ $Pai_{custo} = comprar{\_}carro$, $Filhos_{custo}=\{preco\,,\, seguro\}$ e $Val_{custo} = Val_{preco} + Val_{seguro}$
++ $Pai_{preco} = custo$, $Filhos_{preco} = \emptyset$ e $Val_{preco}=0.5$
++ etc
+
+Podemos então resolver $Val_{comprar{\_}carro}$:
+
+$$
+val_{comprar{\_}carro} = \frac{val_{custo} + val_{beleza}}{2} \,=\, \frac{\left(val_{preco} + val_{seguro}\right) + val_{beleza}}{2} = \frac{\left(0.5 + 0.5 \right) + 0.8}{2} \,=\, 0.9
+$$
+
+b)
+
++ $Pai_{C}$ e $Raiz_{H}$ já foram definidos acima.
++ $Avo_{C} = Pai_{Pai_{C}}$: Como $Pai_{(\,)}=(\,)$ (definição acima), temos que $Avo_{Raiz}=(\,)$. Usando o exemplo do item anterior, temos que $Avo_{beleza} = (\,)$ e $Avo_{custo}=comprar{\_}carro$
++ $Irmaos_{C} = Filhos_{Pai_{C}} - {C}$: Como $Filhos_{(\,)}=(\,)$ (definição acima), temos que $Irmaos_{Raiz}=\emptyset$. Usando o exemplo do item anterior, temos que $Irmaos_{beleza} = \{ custo  \}$.

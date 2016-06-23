@@ -1,0 +1,45 @@
+---
+title: "Atividade 5"
+output: pdf_document
+date: "April 2016"
+---
+
+## Definições gerais
+
+Um recurso está disponível para processar *jobs*. *Jobs* não podem ser interrompidos. Cada job tem um tempo de processamento e um deadline. Cada job tem uma multa calculada como taxa por minuto de atraso. O exercício consistem em formalizar o problema para achar a ordem de processamentos de jobs considerando os objetivos descritos nas seções abaixo.
+
+Chamamos de escalonamento um conjunto ordenado de *jobs* a ser executado $S = \{J_{1}, ..., J_{n}\} ,\, n \in \mathbb{N}$. 
+
+Seja um *job* $J_{i}$ representado pela a tupla $J_{i}=(p_{i}, d_{i}), \, i={1, ..., n}$, onde:
+
+* $p_{i}$ é o tempo de processamento do *job* $i$: número de unidades de tempo necessárias para execução do *job* no único recurso disponível
+* $d_{i}$ o *deadline* para execução de $J_{i}$: número de unidades de tempo desde o início da execução do escalomento
+
+Assim, o atraso de um *job* $J_{i}$ num determinado escalonamento $S$ é dado como $a_{i}^{S} = \left( \sum_{j=1}^{i} p_{j} \right) - d_{i}$.
+
+Para efeitos de simplificação, assumimos também que não há intervalo entre as execuções dos *jobs*.
+
+##  Minimizar o número de *jobs* que sofrem atraso
+
+Baseado nas definições gerais acima, podemos definir a função $atrasado$ como:
+
+$$
+atrasado(S, i) = \left\{
+\begin{aligned}
+1, & \,a_{i}^{S} > 0  \\
+0, & \, caso \, contrário
+\end{aligned}
+\right.
+$$
+
+**Objetivo**: minimizar $\sum_{i=1}^{|S|}atrasado(S,i)$.
+
+## Minimizar o total de multa
+
+Para efeitos de simplificação, como a multa por atraso é baseada no atraso, podemos definir $multa$ como:
+
+$$
+multa(S, i) = \gamma a_{i}^{S} \, | \, \gamma \in \mathbb{R},\, 0 \leq \gamma \leq 1
+$$
+
+**Objetivo**: minimizar $\sum_{i=1}^{|S|}multa(S,i)$.

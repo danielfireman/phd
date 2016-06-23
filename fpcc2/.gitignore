@@ -1,0 +1,9 @@
+*.csv
+report.html
+report.pdf
+report.html
+*.aux
+*.fdb_latexmk
+*.log
+*.fls
+doc_prefix.tex
