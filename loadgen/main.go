@@ -17,7 +17,7 @@ var (
 	initialQps   = flag.Int("initial_qps", 2000, "Initial QPS impressed on the server.")
 	stepDuration = flag.Duration("step_duration", 10*time.Second, "Duration of the load step. Example: 1m")
 	stepSize     = flag.Int("step_size", 200, "Step size.")
-	maxQPS       = flag.Int("max_qps", 10000, "Maximum QPS")
+	maxQPS       = flag.Int("max_qps", 10000, "Maximum QPS.")
 )
 
 // Shared variables, need to go trough atomic.
