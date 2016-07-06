@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -20,6 +21,7 @@ var (
 	stepDuration = flag.Duration("step_duration", 10*time.Second, "Duration of the load step. Example: 1m")
 	stepSize     = flag.Int("step_size", 100, "Step size.")
 	maxQPS       = flag.Int("max_qps", 2300, "Maximum QPS.")
+	timeout      = flag.Duration("timeout", 20*time.Millisecond, "HTTP client timeout")
 )
 
 // Shared variables, need to go trough atomic.
@@ -29,22 +31,20 @@ func main() {
 	if *initialQps <= 0 {
 		log.Fatalf("InitialQps must be positive.")
 	}
-
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	workers := int(32)
-	log.Println("RunningOn:", runtime.GOMAXPROCS(0), "Workers:", workers)
+	fmt.Fprintf(os.Stderr, "RunningOn:%d Workers:%d", runtime.GOMAXPROCS(0), workers)
+
 	work := make(chan struct{}, *maxQPS*workers)
 	for i := 0; i < workers; i++ {
 		client := http.Client{
-			Timeout: 20 * time.Millisecond,
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
-					Timeout:   20 * time.Millisecond,
-					KeepAlive: 20 * time.Millisecond,
+					Timeout:   *timeout,
+					KeepAlive: *timeout,
 				}).Dial,
-				DisableCompression:  true,
-				DisableKeepAlives:   true,
-				TLSHandshakeTimeout: 20 * time.Millisecond,
+				DisableCompression: true,
+				DisableKeepAlives:  true,
 			},
 		}
 		go worker(client, work)
