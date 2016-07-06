@@ -14,14 +14,18 @@ import (
 	"time"
 )
 
-const url = "http://10.4.2.103:8080/msg"
-
 var (
-	initialQps   = flag.Int("initial_qps", 100, "Initial QPS impressed on the server.")
+	initialQps   = flag.Int("initial_qps", 50, "Initial QPS impressed on the server.")
 	stepDuration = flag.Duration("step_duration", 10*time.Second, "Duration of the load step. Example: 1m")
-	stepSize     = flag.Int("step_size", 100, "Step size.")
-	maxQPS       = flag.Int("max_qps", 2300, "Maximum QPS.")
+	stepSize     = flag.Int("step_size", 50, "Step size.")
+	maxQPS       = flag.Int("max_qps", 1500, "Maximum QPS.")
 	timeout      = flag.Duration("timeout", 20*time.Millisecond, "HTTP client timeout")
+	clientAddr   = flag.String("addr", "http://10.4.2.103", "Client HTTP address")
+)
+
+const (
+	msgSuffix  = "/msg"
+	quitSuffix = "/quit"
 )
 
 // Shared variables, need to go trough atomic.
@@ -38,13 +42,12 @@ func main() {
 	work := make(chan struct{}, *maxQPS*workers)
 	for i := 0; i < workers; i++ {
 		client := http.Client{
+			Timeout: *timeout,
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
 					Timeout:   *timeout,
 					KeepAlive: *timeout,
 				}).Dial,
-				DisableCompression: true,
-				DisableKeepAlives:  true,
 			},
 		}
 		go worker(client, work)
@@ -75,21 +78,24 @@ func main() {
 			log.Fatalf("Client can not handle the load")
 		}
 
-		oldSucc := succs
-		oldReq := reqs
-
 		atomic.StoreUint64(&reqs, 0)
 		atomic.StoreUint64(&succs, 0)
 		atomic.StoreUint64(&errs, 0)
 
 		if qps >= *maxQPS {
 			close(work)
+			resp, err := http.Get(*clientAddr + quitSuffix)
+			if err != nil {
+				io.Copy(ioutil.Discard, resp.Body)
+			}
 			return
 		}
+		qps += *stepSize
 	}
 }
 
 func worker(client http.Client, work chan struct{}) {
+	url := *clientAddr + msgSuffix
 	for {
 		<-work
 		atomic.AddUint64(&reqs, 1)
