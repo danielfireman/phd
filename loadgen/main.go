@@ -51,9 +51,9 @@ func main() {
 	}
 
 	qps := *initialQps
+	fmt.Printf("qps,totalReq,succReq,errReq,throughput\n")
 	for {
 		step := time.Tick(*stepDuration)
-
 		t := time.Tick(time.Duration(float64(1e9)/float64(qps)) * time.Nanosecond)
 		func() {
 			for {
@@ -69,7 +69,7 @@ func main() {
 				}
 			}
 		}()
-		fmt.Printf("qps:%d req:%d succ:%d err:%d tp:%.2f\n", qps, reqs, succs, errs, float64(succs)/(*stepDuration).Seconds())
+		fmt.Printf("%d,%d,%d,%d,%.2f\n", qps, reqs, succs, errs, float64(succs)/(*stepDuration).Seconds())
 
 		if float64(reqs) < 0.80*float64(qps)*stepDuration.Seconds() {
 			log.Fatalf("Client can not handle the load")
@@ -86,11 +86,6 @@ func main() {
 			close(work)
 			return
 		}
-
-		if float64(oldSucc) >= 0.95*float64(oldReq) {
-			qps += *stepSize
-		}
-
 	}
 }
 
