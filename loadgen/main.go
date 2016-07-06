@@ -6,18 +6,20 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"runtime"
 	"sync/atomic"
 	"time"
 )
 
-const url = "http://localhost:8080/msg"
+const url = "http://10.4.2.103:8080/msg"
 
 var (
-	initialQps   = flag.Int("initial_qps", 2000, "Initial QPS impressed on the server.")
+	initialQps   = flag.Int("initial_qps", 100, "Initial QPS impressed on the server.")
 	stepDuration = flag.Duration("step_duration", 10*time.Second, "Duration of the load step. Example: 1m")
-	stepSize     = flag.Int("step_size", 200, "Step size.")
-	maxQPS       = flag.Int("max_qps", 10000, "Maximum QPS.")
+	stepSize     = flag.Int("step_size", 100, "Step size.")
+	maxQPS       = flag.Int("max_qps", 2300, "Maximum QPS.")
 )
 
 // Shared variables, need to go trough atomic.
@@ -28,16 +30,23 @@ func main() {
 		log.Fatalf("InitialQps must be positive.")
 	}
 
-	client := http.Client{
-		Timeout: 100 * time.Millisecond,
-		Transport: &http.Transport{
-			DisableKeepAlives:   true,
-			TLSHandshakeTimeout: 100 * time.Millisecond,
-		},
-	}
-	workers := int(*maxQPS / 2)
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	workers := int(32)
+	log.Println("RunningOn:", runtime.GOMAXPROCS(0), "Workers:", workers)
 	work := make(chan struct{}, *maxQPS*workers)
 	for i := 0; i < workers; i++ {
+		client := http.Client{
+			Timeout: 20 * time.Millisecond,
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   20 * time.Millisecond,
+					KeepAlive: 20 * time.Millisecond,
+				}).Dial,
+				DisableCompression:  true,
+				DisableKeepAlives:   true,
+				TLSHandshakeTimeout: 20 * time.Millisecond,
+			},
+		}
 		go worker(client, work)
 	}
 
@@ -60,9 +69,9 @@ func main() {
 				}
 			}
 		}()
-		fmt.Printf("qps:%d nw:%d req:%d succ:%d err:%d\n", qps, workers, reqs, succs, errs)
+		fmt.Printf("qps:%d req:%d succ:%d err:%d tp:%.2f\n", qps, reqs, succs, errs, float64(succs)/(*stepDuration).Seconds())
 
-		if float64(reqs) < 0.95*float64(qps)*stepDuration.Seconds() {
+		if float64(reqs) < 0.80*float64(qps)*stepDuration.Seconds() {
 			log.Fatalf("Client can not handle the load")
 		}
 
@@ -81,6 +90,7 @@ func main() {
 		if float64(oldSucc) >= 0.95*float64(oldReq) {
 			qps += *stepSize
 		}
+
 	}
 }
 
