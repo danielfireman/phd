@@ -20,7 +20,7 @@ var (
 	stepSize     = flag.Int("step_size", 50, "Step size.")
 	maxQPS       = flag.Int("max_qps", 1500, "Maximum QPS.")
 	timeout      = flag.Duration("timeout", 20*time.Millisecond, "HTTP client timeout")
-	clientAddr   = flag.String("addr", "http://10.4.2.103", "Client HTTP address")
+	clientAddr   = flag.String("addr", "http://10.4.2.103:8080", "Client HTTP address")
 )
 
 const (
@@ -48,6 +48,7 @@ func main() {
 					Timeout:   *timeout,
 					KeepAlive: *timeout,
 				}).Dial,
+				DisableKeepAlives: true,
 			},
 		}
 		go worker(client, work)
