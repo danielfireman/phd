@@ -1,34 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="15 seconds" debug="false">
-	<appender name="GC"
-		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>logs/gc.log</file>
-		<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-			<fileNamePattern>logs/gc_%i.log
-			</fileNamePattern>
-			<minIndex>1</minIndex>
-			<maxIndex>10</maxIndex>
-		</rollingPolicy>
-
-		<triggeringPolicy
-			class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-			<maxFileSize>100MB</maxFileSize>
-		</triggeringPolicy>
-
-		<encoder>
-			<pattern>%msg%n</pattern>
-		</encoder>
-	</appender>
-
-	<logger name="gc" level="INFO">
-		<appender-ref ref="GC" />
-	</logger>
-
 	<appender name="CPU"
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>logs/cpu.log</file>
+		<file>logs/${CPU_LOG_FILE}.log</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-			<fileNamePattern>logs/cpu_%i.log
+			<fileNamePattern>logs/${CPU_LOG_FILE}_%i.log
 			</fileNamePattern>
 			<minIndex>1</minIndex>
 			<maxIndex>10</maxIndex>
