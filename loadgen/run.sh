@@ -1,4 +1,7 @@
 #!/bin/bash
 set -x
 killall main
-go run main.go > ~/logs/client_$1 &
+for i in `seq 1 $1`
+do
+	go run main.go > ~/logs/client_$i &
+done

@@ -86,7 +86,7 @@ func main() {
 		if qps >= *maxQPS {
 			close(work)
 			resp, err := http.Get(*clientAddr + quitSuffix)
-			if err != nil {
+			if err == nil {
 				io.Copy(ioutil.Discard, resp.Body)
 			}
 			return
