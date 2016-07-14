@@ -33,6 +33,11 @@ public class App extends Jooby {
 			startLogger();
 		});
 
+		get("/quit", () -> {
+			System.exit(0);
+			return Results.ok();
+		});
+
 		get("/msg", () -> {
 			requests.mark();
 			Message msg = new Message();
