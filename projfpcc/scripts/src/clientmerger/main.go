@@ -51,21 +51,21 @@ func main() {
 		}
 	}
 
-	// Generating output.
-	for qps, records := range recordsByQps {
-		outFile, err := os.Create(filepath.Join(*path, fmt.Sprintf("throughput_%d.csv", qps)))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("Writing file: ", outFile.Name())
-		w := bufio.NewWriter(outFile)
-		fmt.Fprintf(w, "ts,qps,throughput\n")
-		for _, rec := range records {
-			fmt.Fprintf(w, "%d,%d,%.2f\n", rec.ts, rec.qps, rec.throughput)
-		}
-		w.Flush()
-		outFile.Close()
+	outFile, err := os.Create(filepath.Join(*path, "throughput.csv"))
+	if err != nil {
+		log.Fatal(err)
 	}
+	fmt.Println("Writing file: ", outFile.Name())
+	w := bufio.NewWriter(outFile)
+	fmt.Fprintf(w, "qps,ts,throughput\n")
+	// Generating output.
+	for _, records := range recordsByQps {
+		for _, rec := range records {
+			fmt.Fprintf(w, "%d,%d,%.2f\n", rec.qps, rec.ts, rec.throughput)
+		}
+	}
+	w.Flush()
+	outFile.Close()
 }
 
 func processFile(f string) (map[int]record, error) {
