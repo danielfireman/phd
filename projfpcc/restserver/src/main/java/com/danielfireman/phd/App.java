@@ -1,6 +1,7 @@
 package com.danielfireman.phd;
 
 import java.lang.management.ManagementFactory;
+import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +54,7 @@ public class App extends Jooby {
 				// Other reference:
 				// http://blog.scoutapp.com/articles/2009/07/31/understanding-load-averages
 				OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-				cpuLogger.info(String.format("%s,%.2f,%s",
+				cpuLogger.info(String.format(Locale.US, "%s,%.2f,%s",
 						System.currentTimeMillis(),
 						osBean.getProcessCpuLoad(),
 						osBean.getAvailableProcessors()));
