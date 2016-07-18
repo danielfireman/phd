@@ -17,7 +17,6 @@ import (
 var (
 	initialQps     = flag.Int("initial_qps", 50, "Initial QPS impressed on the server.")
 	stepDuration   = flag.Duration("step_duration", 10*time.Second, "Duration of the load step. Example: 1m")
-	reportInterval = flag.Duration("report_duration", 5*time.Second, "Duration between intervals. Example: 1m")
 	stepSize       = flag.Int("step_size", 100, "Step size.")
 	maxQPS         = flag.Int("max_qps", 1500, "Maximum QPS.")
 	numWarmupSteps = flag.Int("num_warmup_steps", 2, "Number of steps to warmup. They are going to receive initial QPS.")
@@ -63,19 +62,11 @@ func main() {
 	for {
 		step := time.Tick(*stepDuration)
 		t := time.Tick(time.Duration(float64(1e9)/float64(qps)) * time.Nanosecond)
-		report := time.Tick(*reportInterval)
 		start := time.Now()
 		func() {
 			for {
 				<-t
 				select {
-				case <-report:
-					dur := time.Now().Sub(start)
-					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
-					atomic.StoreUint64(&reqs, 0)
-					atomic.StoreUint64(&succs, 0)
-					atomic.StoreUint64(&errs, 0)
-					start = time.Now()
 				case <-step:
 					dur := time.Now().Sub(start)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
