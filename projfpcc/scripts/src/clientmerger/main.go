@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	rounds = flag.Int("rounds", 0, "Number of experiment rounds to be processed.")
-	path   = flag.String("path", "", "Directory where the data is located.")
+	rounds     = flag.Int("rounds", 0, "Number of experiment rounds to be processed.")
+	path       = flag.String("path", "", "Directory where the data is located.")
+	numClients = flag.Int("clients", 1, "Number of client processes.")
 )
 
 type record struct {
@@ -32,22 +33,30 @@ func main() {
 	// Reading and consolidating input.
 	recordsByQps := make(map[int32][]record)
 	for round := 1; round <= *rounds; round++ {
+		roundRecords := make(map[int32]record, *numClients)
 		m1, err := processFile(filepath.Join(*path, fmt.Sprintf("client_%d_1", round)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		m2, err := processFile(filepath.Join(*path, fmt.Sprintf("client_%d_2", round)))
-		if err != nil {
-			log.Fatal(err)
+		for _, rec := range m1 {
+			roundRecords[rec.qps] = rec
 		}
-		for k, rec1 := range m1 {
-			rec2 := m2[k]
-			totalQps := rec1.qps + rec2.qps
-			recordsByQps[totalQps] = append(recordsByQps[totalQps], record{
-				throughput: rec1.throughput + rec2.throughput,
-				ts:         rec1.ts,
-				qps:        totalQps,
-			})
+		for client := 2; client <= *numClients; client++ {
+			mCurr, err := processFile(filepath.Join(*path, fmt.Sprintf("client_%d_%d", round, client)))
+			if err != nil {
+				log.Fatal(err)
+			}
+			for qps, rec := range mCurr {
+				consolidatedRec := roundRecords[qps]
+				roundRecords[qps] = record{
+					qps:        consolidatedRec.qps + rec.qps,
+					ts:         consolidatedRec.ts,
+					throughput: consolidatedRec.throughput + rec.throughput,
+				}
+			}
+		}
+		for qps, rec := range roundRecords {
+			recordsByQps[qps] = append(recordsByQps[qps], rec)
 		}
 	}
 
@@ -68,7 +77,7 @@ func main() {
 	outFile.Close()
 }
 
-func processFile(f string) (map[int]record, error) {
+func processFile(f string) (map[int32]record, error) {
 	fmt.Println("Processing file: ", f)
 	csvFile, err := os.Open(f)
 	if err != nil {
@@ -76,7 +85,7 @@ func processFile(f string) (map[int]record, error) {
 	}
 	defer csvFile.Close()
 
-	m := make(map[int]record)
+	m := make(map[int32]record)
 	scanner := bufio.NewScanner(csvFile)
 	for lineno := 0; scanner.Scan(); lineno++ {
 		// Ignoring header
@@ -84,11 +93,10 @@ func processFile(f string) (map[int]record, error) {
 			continue
 		}
 		r := strings.Split(scanner.Text(), ",")
-		id, _ := strconv.Atoi(r[0])
-		ts, _ := strconv.ParseInt(r[1], 10, 64)
-		qps, _ := strconv.ParseInt(r[2], 10, 32)
-		throughput, _ := strconv.ParseFloat(r[6], 32)
-		m[id] = record{
+		ts, _ := strconv.ParseInt(r[0], 10, 64)
+		qps, _ := strconv.ParseInt(r[1], 10, 32)
+		throughput, _ := strconv.ParseFloat(r[5], 32)
+		m[int32(qps)] = record{
 			ts:         ts,
 			qps:        int32(qps),
 			throughput: float32(throughput),
