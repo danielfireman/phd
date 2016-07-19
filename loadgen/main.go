@@ -22,6 +22,8 @@ var (
 	numWarmupSteps = flag.Int("num_warmup_steps", 2, "Number of steps to warmup. They are going to receive initial QPS.")
 	timeout        = flag.Duration("timeout", 20*time.Millisecond, "HTTP client timeout")
 	clientAddr     = flag.String("addr", "http://10.4.2.103:8080", "Client HTTP address")
+	numWorkers     = flag.Int("workers", 32, "Client HTTP address")
+	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 )
 
 const (
@@ -37,8 +39,8 @@ func main() {
 	if *initialQps <= 0 {
 		log.Fatalf("InitialQps must be positive.")
 	}
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	workers := int(32)
+	runtime.GOMAXPROCS(*numCores)
+	workers := int(*numWorkers)
 	fmt.Fprintf(os.Stderr, "RunningOn:%d Workers:%d", runtime.GOMAXPROCS(0), workers)
 
 	work := make(chan struct{}, *maxQPS*workers)
