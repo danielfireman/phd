@@ -1,0 +1,98 @@
+---
+title: "Exploratory Data Analysis"
+author: "Daniel Fireman (danielfireman@gmail.com)"
+date: "July 17, 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+NUM_RESAMPLES <- 1000
+
+require(ggplot2)
+require(dplyr)
+require(resample)
+require(cowplot)
+require(gridExtra)
+```
+
+## Throughput
+
+```{r throughput, message=FALSE, fig.asp=0.8, fig.align='center'}
+ic <- function(currQPS, data) {
+  d <- filter(data, qps == currQPS)
+  b <- bootstrap(d$throughput, mean, R = NUM_RESAMPLES)
+  ci <- CI.percentile(b, probs = c(.005, .995))
+  return (data.frame(qps=currQPS, mean=mean(ci), lower=ci[1], upper=ci[2]))
+}
+
+perf.data <- function(data) {
+  qpsList <- data$qps %>% unique() %>% sort()
+  d <- data.frame(qps = c(), upper = c(), mean = c(), lower = c())
+  for (currQPS in qpsList) {
+    d <- rbind(d, ic(currQPS, data))
+  }
+  d <- arrange(d, desc(mean))
+  return(d)
+}
+
+plot.throughput <- function(data) {
+ qpsList <- data$qps %>% unique() %>% sort()
+ ggplot(perf.data(data), aes(x = qps, y = mean)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width=.2, size=0.5, color = "darkblue")+
+  geom_point(size = 1, color = "black") +
+  geom_line(alpha=0.5, color = "darkgrey") +
+  geom_bar(stat="identity", fill="white", colour="darkgrey", alpha=0.1) +
+  #scale_x_continuous(breaks = seq(0, qpsList[NROW(qpsList)], by=500)) +
+  #scale_y_continuous(breaks = seq(0, max(data$throughput)+200, by=250)) +
+  ylab("Throughput") +
+  xlab("Impressed load") 
+}
+
+t1 <- read.csv("../data/1core/throughput.csv") %>% filter(throughput != 0.0) %>% na.omit()
+plot.t1 <- plot.throughput(t1)
+t2 <- read.csv("../data/2cores/throughput.csv") %>% filter(throughput != 0.0) %>% na.omit()
+plot.t2 <- plot.throughput(t2)
+t4 <- read.csv("../data/4cores/throughput.csv") %>% filter(throughput != 0.0) %>% na.omit()
+plot.t4 <- plot.throughput(t4)
+grid.arrange(plot.t1, plot.t2, plot.t4, nrow=3)
+```
+
+## Cost-Effectiveness
+
+```{r cost, message=FALSE, fig.asp=0.8, fig.align='center'}
+ci.t1 <- perf.data(t1)
+ci.t2 <- perf.data(t2)
+ci.t4 <- perf.data(t4)
+
+sat.t1 <- (ci.t1 %>% filter(mean == max(mean)))$mean
+sat.t1
+
+sat.t2 <- (ci.t2 %>% filter(mean == max(mean)))$mean
+sat.t2
+
+sat.t4 <- (ci.t4 %>% filter(mean == max(mean)))$mean
+sat.t4
+
+speedup.1.2 <- sat.t2 / sat.t1
+speedup.1.2
+speedup.2.4 <- sat.t4 / sat.t2
+speedup.2.4
+speed.gain <- speedup.2.4 / speedup.1.2
+speed.gain
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+ggplot() +
+  geom_point(data=ci.t1, aes(x = qps, y = mean, size=mean, color="1 VCPU"), alpha=1) +
+  geom_point(data=ci.t2, aes(x = qps, y = mean, size=mean/2, color="2 VCPUs"), alpha=0.66) +
+  geom_point(data=ci.t4, aes(x = qps, y = mean, size=mean/4, color="4 VCPUs"), alpha=0.33) +
+  scale_x_continuous(breaks=seq(0, 4500, by=500)) +
+  scale_y_continuous(breaks=seq(0, max(t4$throughput)+100, by=500)) +
+  ylab("Throughput") +
+  xlab("Impressed load") +
+  scale_size_continuous(guide = FALSE) +
+  scale_colour_manual(values=cbPalette) +
+  guides(colour=guide_legend(title=NULL, override.aes = list(size=3)))
+```
