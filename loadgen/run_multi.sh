@@ -13,6 +13,6 @@ do
 	if [ $ACTIVE_CLIENTS == $NUM_CLIENTS ]; then
 		break
 	fi
-	ssh -i ~/fireman.sururu.key ubuntu@${CLIENT} "cd ~/phd/loadgen;./run.sh ${NUM_ROUNDS} ${SERVER}" &
+	ssh -i ~/fireman.sururu.key ubuntu@${CLIENT} "cd ~/phd/loadgen;./run.sh ${NUM_CLIENTS} ${SERVER}" &
 	ACTIVE_CLIENTS=`expr $ACTIVE_CLIENTS + 1`
 done
