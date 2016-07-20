@@ -1,6 +1,6 @@
 #!/bin/bash
 set -x
-killall main
+killall loadgen
 rm logs/*
 
 WARMUP_STEPS=3
@@ -19,5 +19,5 @@ do
 --step_size=${STEP_SIZE} \
 --timeout=${TIMEOUT} \
 --max_qps=${MAX_QPS} \
---addr=$2 > logs/client_${1}_{id}
+--addr=$2 > logs/client_${1}_{$id}
 done
