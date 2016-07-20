@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -a CLIENTS=('10.4.5.132' '10.4.5.130' '10.4.5.133' '10.4.5.134')
+source configrc
 
 echo "Time to kill bastard loadgen processes running on ${CLIENTS[@]}"
 for CLIENT in ${CLIENTS[@]};

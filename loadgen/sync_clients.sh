@@ -1,6 +1,4 @@
 #!/bin/bash
-declare -a CLIENTS=('10.4.5.132' '10.4.5.130' '10.4.5.133' '10.4.5.134')
-
 ./killall.sh
 
 echo "Syncing clients: ${CLIENTS[@]}"
