@@ -16,7 +16,7 @@ STEP_SIZE=50
 MAX_QPS=1000
 for i in `seq 1 ${NUM_ROUNDS}`
 do
-	sleep 1m
+	sleep 1.5m
 	./loadgen \
 --num_warmup_steps=${WARMUP_STEPS} \
 --initial_qps=${INITIAL_QPS} \
