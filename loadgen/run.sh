@@ -23,5 +23,5 @@ do
 --step_size=${STEP_SIZE} \
 --timeout=${TIMEOUT} \
 --max_qps=${MAX_QPS} \
---addr=${SERVER_ADDR} > logs/client_${NUM_CLIENTS}_${i}_${CLIENT_ID}
+--addr=${SERVER_ADDR} > logs/client_${i}_${CLIENT_ID}
 done
