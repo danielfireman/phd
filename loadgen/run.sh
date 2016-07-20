@@ -4,7 +4,7 @@ killall loadgen
 rm logs/*
 
 # This order must be in sync with run_multi.sh
-NUM_CLIENTS=$1
+CLIENT_ID=$1
 NUM_ROUNDS=$2
 SERVER_ADDR=$3
 
@@ -17,12 +17,11 @@ MAX_QPS=1200
 for i in `seq 1 ${NUM_ROUNDS}`
 do
 	sleep 1m
-	id="`cat /var/lib/dbus/machine-id`"
 	./loadgen \
 --num_warmup_steps=${WARMUP_STEPS} \
 --initial_qps=${INITIAL_QPS} \
 --step_size=${STEP_SIZE} \
 --timeout=${TIMEOUT} \
 --max_qps=${MAX_QPS} \
---addr=${SERVER_ADDR} > logs/client_${NUM_CLIENTS}_${i}_${id}
+--addr=${SERVER_ADDR} > logs/client_${NUM_CLIENTS}_${i}_${CLIENT_ID}
 done
