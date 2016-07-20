@@ -16,7 +16,7 @@ STEP_SIZE=50
 MAX_QPS=1200
 for i in `seq 1 ${NUM_ROUNDS}`
 do
-#	sleep 1.5m
+	sleep 1m
 	id="`cat /var/lib/dbus/machine-id`"
 	./loadgen \
 --num_warmup_steps=${WARMUP_STEPS} \
