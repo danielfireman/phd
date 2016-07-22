@@ -1,0 +1,9 @@
+declare -a CLIENTS=('10.4.5.132' '10.4.5.130' '10.4.5.133' '10.4.5.134' '10.4.3.37' '10.4.5.216')
+
+#export SERVER="http://10.4.5.216:8080"  # 2 Cores
+#export NUM_CORES=2
+#export NUM_CLIENTS=3
+
+export SERVER="http://10.4.5.226:8080"  # 4 Cores
+export NUM_CORES=4
+export NUM_CLIENTS=6
