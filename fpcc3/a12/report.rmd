@@ -1,0 +1,40 @@
+---
+title: "FPCC3 - Atividade 12"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Formalize a técnica Analytic Hierarchy Process (AHP). Para simplificar um pouco a tarefa:
+
+1. Basta formalizar como obter o vetor de prioridade do critério-raiz. Não há necessidade de formalizar o índice de consistência.
+1. Os pesos dos critérios são fornecidos pelo tomador de decisão.
+
+## Resposta
+
+Como estamos interessados somente no critério-raiz, o cálculo do vetor de prioridades levará em conta um conjunto de entrada:
+
+* $C=\{c_1, c_2\, ..., c_n\}$ de pesos de critérios. Por exemplo, o peso dos critérios preço e distância para o trabalho, quando consideramos alugar um apartamento.
+* $P_k=\{p_{k, 1}, p_{k, 2}, ..., p_{n, w}\}$, $w$ é o número de alternativas. Esse conjunto a comparação relativa das alternativas para o critério $k$. Por exemplo, com relação a distância, poderíamos ter dois apartamentos (índices 1 e 2). Um possível conjunto de comparação relativa podería ser: $P_{dist}=\{1, 0.6\}$. Ou seja, o apartamento tem *score* 1 quando comparado com ele mesmo e 0.6 quando comparado com o apartamento 2.
+
+O primeiro passo do cálculo é a construção das matrizes de comparação entre as alternativas para cada critério ($n$ matrizes de tamanho $n,w$). A matriz de comparação é uma matriz diagonal com as seguintes características:
+
+$$
+a_{i,j} =  \left\{
+\begin{align}
+1,& \, i = j \\
+p_{i,j},& \, i < j \\
+\frac{1}{a_{ij}},& \, i > j
+\end{align}
+\right.
+$$
+
+Com as várias matrizes de comparação calculadas, o próximo passo é calcular os eigen-vetores (vetores de prioridades) para a matriz de cada alternativa. Clique [aqui](https://docs.google.com/file/d/0BxYU82vErc8xYS1PendBeHlpSkk/edit) se não lembra como calcular os vetores de prioridades. Outra referência também é a página da [wikipedia](https://en.wikipedia.org/wiki/Eigenvalues_and_eigenvectors#Two-dimensional_matrix_example) sobre eigen-vetores. Para efeitos dessa demonstração, assumimos que temos o resultado conjunto $PV=\{PV_1, ..., P_{n}\}$ de vetores de prioridade (vetores com uma coluna e uma linha para cada alternativa).
+
+Por fim, para cada alternativa $a$, calculamos o peso composto:
+
+$$Alterativa_{a} = \sum_{i=1}^{n}=PV_{i,a}*C_{i}$$
+
+E assim podemos compor o vetor de pesos (uma columna e $w$ linhas, uma para cada alternativas).
