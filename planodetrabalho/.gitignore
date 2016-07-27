@@ -1,0 +1,11 @@
+*.pdf
+*.fls
+*.aux
+*.log
+index.html
+index_cache
+index.fdb_latexmk
+index.tex
+index.docx
+index.synctex.gz
+index_files
