@@ -15,36 +15,40 @@ header-includes:
   - \usepackage[nothing]{algorithm}
   - \usepackage{latexsym}
   - \usepackage{graphicx,url}
-link-citations: yes
-bibliography: bib.bib
+  - \usepackage{float}
 lang: pt
 output:
   pdf_document:
+    latex_engine: pdflatex
     keep_tex: true
+    citation_package: natbib
+    highlight: zenburn
     includes:
       before_body: 
         - defs.tex
         - title_page.tex
         - page_conf_and_toc.tex
+
+# Bibliography
+bibliography: bib
+biblio-style: abbrv
+link-citations: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Introdução {#sec:introdu}
+```{r child = 'intro.rmd'}
+```
 
-Na introdu??o voc? deve contextualizar o problema que estar? estudando. Em particular, voc? deve descrever brevemente a ?rea na qual estar? trabalhando e introduzir de forma clara os problemas da ?rea relevantes ao seu trabalho. Observe que a se??o n?o fala de solu??es mas de problemas existindo na ?rea de interesse.
-Sem contar ap?ndices e refer?ncias bibliogr?ficas, uma proposta de disserta??o de mestrado geralmente cont?m uma dezena de p?ginas.
+```{r child = 'carac.rmd'}
+```
 
-# Objetivo da Proposta {#sec:objetivo}
+```{r child = 'met.rmd'}
+```
 
-Nesta seção, você deve falar da solução que você propõe aos problemas apresentados anteriormente. O enfoque ? sobre "o qu?" voc? vai fazer.
+```{r child = 'cron.rmd'}
+```
 
-# Relevância da Proposta {#sec:relev}
-
-Aqui, o enfoque ? o "porqu?". Voc? pode se concentrar em responder ? seguinte pergunta: "Se meu trabalho for bem sucedido, o que ter? mudado na ?rea sob estudo?". Em outras palavras, quais s?o as contribui??es planejadas?
-
-# Metodologia de Trabalho {#sec:metodologia}
-
-Aqui o enfoque ? o "como".  Quais s?o os passos que dever?o ser desenvolvidos, e em que ordem, para que o trabalho seja feito. Uma tabela semelhante ? Tabela~\ref{tab:atividades} pode ser utilizada para apoiar a apresenta??o.
+# Referências
