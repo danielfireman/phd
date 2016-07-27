@@ -1,0 +1,67 @@
+---
+title: "Stretching Java™ HTTP Servers in the multi-core world"
+header-includes: \usepackage{float}
+output:
+  word_document: default
+  pdf_document:
+    fig_caption: no
+    keep_tex: yes
+  html_document: default
+bibliography: bib.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Abstract {#abstract}
+
+Will be added at the latest version of the paper.
+
+## Introduction {#introduction}
+
+* Introduce multi-core and how pervasive is this type of computing power nowadays
+* Introduce Java$^{TM}$ Virtual Machine default parameters, configuration complexity and its impact on performance (specially on multi-core systems)
+* System performance and its importance to businesses (business problem)
+* Describe the technical problem and quickly describe how others tried to address it
+* Describe the purpose and design of our experiment. Make sure we quickly summarize load (independent variable) and throughput (collected metric, factor)
+* Briefly present the main results of the experiment - the scalability of a Java$^{TM}$ is not linear - and present some virtual machine configuration trade-offs
+* Summarize the next sections of the paper
+ 
+## Related Work
+This section describe some previous research on performance analysis of HTTP servers. It also presents some papers on Java™ Virtual Machine performance analysis and configuration tuning.
+
+* Discuss "Measuring the capacity of a Web server under realistic loads" [@Banga:1999:MCW:598682.598725], which describes in detail how asynchronous web servers work and provides great input on how to do capacity measurement. 
+
+* Discuss "Web Application Scalability: A Model-Based Approach" [@DBLP:conf/cmg/WilliamsS04], to discuss scalability models and how they relate
+
+* Discuss "Auto-Tuning the Java Virtual Machine" [@DBLP:conf/ipps/JayasenaFRPP15], which presents some problems with Java$^{TM}$ default parameters as well as propose a way to configure the Java Virtual Machine
+
+## Experiment Design and Experimental Setup {#experiment}
+
+* Describes the 1-factor experiment that was performed, explaining load (independ) and throughput (dependent) variables as well as how they were collected
+* Explain $avgT$, the indirect metric used to express the experiment conditions
+* State the null-hypothesis: the speedup of a Java$^{TM}$ HTTP is linear
+* Explain the step-function [@stepFun] created to drive the experimen
+* Explain the experiment setup and configurations (LSD cloud)
+
+## Results {#abstract}
+
+* Present experiment results and charts: 1, 2 and 4 cores
+* Compare and discuss results and present statistical evidence to refute null hypothesis:
+     * 1 to 2 cores increase, linear scalability is sustained
+     * 2 to 4 cores increase, breaks linear scalability increase
+* Discuss threats to validity, most of them related to external validity:
+     * One architecture: 64-bits
+     * One operating system: Linux
+     * One application: No-op
+     * One workload: no bursty traffic, for instance
+     * One configuration: default
+
+## Conclusions and Future Work {#conclusions}
+
+* Summarize the problem and its importance. 
+* highlight main results (including refute null hypothesis) and its implication for businesses
+* Discuss briefly threats to validity and how we are going to address some of them in future work
+* Discuss other future work related to assess the causes of the problem
+
+## References {#references}
