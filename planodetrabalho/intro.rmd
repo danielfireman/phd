@@ -1,11 +1,18 @@
 # Introdução {#sec:intro}
 
-nooobboo [@perfTestingWebSphere]
+* Status atual, computação na nuvem, IaaS, PaaS e linguagens mais utilizadas
+* Gerenciamento
 
-kjdhakdjhsakdjhs]]
+* System performance and its importance to businesses (business problem)
+* Describe the technical problem and quickly describe how others tried to address it
+* Briefly present the main results of the experiment - the scalability of a JavaTM is not linear - and present some virtual machine configuration trade-offs
 
+Mussum Ipsum, cacilds vidis litro abertis. Nullam volutpat risus nec leo commodo, ut interdum diam laoreet. Sed non consequat odio. Viva Forevis aptent taciti sociosqu ad litora torquent Nec orci ornare consequat. Praesent lacinia ultrices consectetur. Sed non ipsum felis. Leite de capivaris, leite de mula manquis.
 
-lkdajlkajalkjdas
+Ta deprimidis, eu conheço uma cachacis que pode alegrar sua vidis.” Suco de cevadiss deixa as pessoas mais interessantiss. Mé faiz elementum girarzis, nisi eros vermeio. Casamentiss faiz malandris se pirulitá.
 
-çkdajlkadla
-lkjklkdas [@efron1994introduction]
+Em pé sem cair, deitado sem dormir, sentado sem cochilar e fazendo pose. Detraxit consequat et quo num tendi nada. A ordem dos tratores não altera o pão duris Si num tem leite então bota uma pinga aí cumpadi!
+
+Cevadis im ampola pa arma uma pindureta. Diuretics paradis num copo é motivis de denguis. Mauris nec dolor in eros commodo tempor. Aenean aliquam molestie leo, vitae iaculis nisl. Quem manda na minha terra sou Euzis!
+
+Vehicula non. Ut sed ex eros. Vivamus sit amet nibh non tellus tristique interdum. Pra lá , depois divoltis porris, paradis. Quem num gosti di mum que vai caçá sua turmis! undefined

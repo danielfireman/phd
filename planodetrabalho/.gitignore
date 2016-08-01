@@ -2,8 +2,8 @@
 *.fls
 *.aux
 *.log
+*.html
 index.bbl
-index.html
 index_cache
 index.fdb_latexmk
 index.tex

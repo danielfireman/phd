@@ -1,1 +1,24 @@
 # Cronograma de atividades {#sec:cron}
+
+As tabelas a seguir indicam quando cada uma das etapas de cada uma das fases descritas anteriormente serão executadas.
+
+
+|   Ano | Trimestre |  Etapa 1 |  Etapa 2  |  Etapa 3  |  Etapa 4  |  Etapa 5  | Etapa 6 |
+|:-----:|:---------:|:--------:|:---------:|:---------:|:---------:|:---------:|:-------:|
+| 2016  |    4      |     X    |           |           |           |           |         |
+| 2017  |    1      |     X    |           |           |           |           |         |
+| 2017  |    2      |     X    |           |           |           |           |         |
+| 2017  |    3      |     X    |           |           |           |           |         |
+| 2017  |    4      |     X    |           |           |           |           |         |
+| 2018  |    1      |     X    |           |           |           |           |         |
+| 2018  |    2      |     X    |           |           |           |           |         |
+| 2018  |    3      |     X    |           |           |           |           |         |
+| 2018  |    4      |     X    |           |           |           |           |         |
+| 2019  |    1      |     X    |           |           |           |           |         |
+| 2019  |    2      |     X    |           |           |           |           |         |
+| 2019  |    3      |     X    |           |           |           |           |         |
+| 2019  |    4      |     X    |           |           |           |           |         |
+| 2020  |    1      |     X    |           |           |           |           |         |
+| 2020  |    2      |     X    |           |           |           |           |         |
+| 2020  |    3      |     X    |           |           |           |           |         |
+

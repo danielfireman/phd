@@ -19,6 +19,7 @@ header-includes:
 lang: pt
 output:
   pdf_document:
+    number_sections: true
     latex_engine: pdflatex
     keep_tex: true
     citation_package: natbib
@@ -42,13 +43,25 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r child = 'intro.rmd'}
 ```
 
+\newpage
+
 ```{r child = 'carac.rmd'}
 ```
+
+\newpage
 
 ```{r child = 'met.rmd'}
 ```
 
+\newpage
+
 ```{r child = 'cron.rmd'}
 ```
 
-# Referências
+\newpage
+
+\addcontentsline{toc}{section}{Referências}
+
+\phantomsection
+
+# Referências {#sec:ref}
