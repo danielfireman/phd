@@ -66,7 +66,7 @@ func main() {
 	}
 	fmt.Println("Writing file: ", outFile.Name())
 	w := bufio.NewWriter(outFile)
-	fmt.Fprintf(w, "qps,ts,throughput\n")
+	fmt.Fprintf(w, "load,ts,throughput\n")
 	// Generating output.
 	for _, records := range recordsByQps {
 		for _, rec := range records {
