@@ -1,0 +1,45 @@
+# Problema e Objetivos {#sec:prob}
+
+Do ponto de vista dos provedores de serviços em nuvem, vemos que a computação
+sem servidor vem ganhando muita aceitação no mercado. Ao fazer uma pesquisa
+entre os principais provedores que oferecem de esse serviço
+[@awslambda; @googlefunctions; @azurefunctions] vemos que a grande maioria
+oferece suporte a escrita de funções em linguagens com ambientes de execução
+bastante complexos, por exemplo, Node.js, Java, C# e Python.
+
+Do ponto de vista dos clientes, temos que as linguagem suportadas nativamente
+pelos principais provedores de serviços na nuvem também são tem seu
+funcionamento auxiliado por ambientes de execução bastante complexos.
+
+Uma vez que custo de execução adicionado pelo ambiente de execução depende de
+aspectos tais como[@995163;@DBLP:conf/ipps/JayasenaFRPP15]:
+
+1. aplicação (ões) executando + carga a que a(s) aplicação(ões) está(ão) 
+sujeita(s)
+1. servidor (real ou virtual) utilizado
+
+Temos que otimizar aspectos como i) as funções/aplicações que serão co-alocadas,
+ii) parâmetros de configuração do ambiente de execução e iii) do servidor podem
+ter um impacto muito grande no custo total de execução dos clientes e/ou
+provedores de serviços. Estes são os principais problemas que este trabalho se
+propõe a resolver.
+
+Assim, o objetivo geral deste trabalho é projetar, desenvolver e avaliar soluções que torne mais eficaz a utilização de recursos por processos suportados
+por ambientes de execução.
+
+Espera-se que as seguintes metas sejam alcançadas no decorrer do doutorado:
+
+* Entender o funcionamento das diversas opções de ambientes de execução
+disponíveis. Isso inclui propor e validar um modelo que consiga explicar o
+impacto de ambientes de execução;
+* Desenvolvimento de mecanismos de configuração e otimização de processos
+suportados por ambientes de execução baseado em características da
+aplicação, da carga e do ambiente de execução;
+* Desenvolvimento de mecanismos de configuração e otimização de processos
+suportados por ambientes de execução baseado em características resultantes da
+co-alocação de aplicações, bem como da carga imposta a cada uma delas e do
+ambiente de execução;
+* Implementação serviços de auxilio à configuração e otimização processos
+suportados por gerenciadores de execução que funcione para as principais
+linguagens de programação e ambientes de execução. O principal objetivo desse
+serviço é permitir a validação dos mecanismos propostos.

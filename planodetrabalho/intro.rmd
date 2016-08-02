@@ -1,18 +1,118 @@
 # Introdução {#sec:intro}
 
-* Status atual, computação na nuvem, IaaS, PaaS e linguagens mais utilizadas
-* Gerenciamento
+Nos últimos anos um novo modelo de negócio surgiu, mudando a forma como os
+usuários têm acesso à Tecnologia da Informação (TI). Nesse modelo, a TI é
+oferecida como um serviço que pode ser adquirido quando necessário e a partir
+de qualquer equipamento que esteja conectado à Internet. Abaixo apresentamos
+uma definição mais completa/formal desse modelo, chamado de nuvem computacional
+(*cloud computing*):
 
-* System performance and its importance to businesses (business problem)
-* Describe the technical problem and quickly describe how others tried to address it
-* Briefly present the main results of the experiment - the scalability of a JavaTM is not linear - and present some virtual machine configuration trade-offs
+> “Computação em Nuvem, como o próprio nome sugere, engloba as chamadas nuvens,
+que são ambientes que possuem recursos (hardware, plataformas de
+desenvolvimento e/ou serviços) acessados virtualmente e de fácil utilização.
+Esses recursos, devido à virtualização, podem ser reconfigurados dinamicamente
+de modo a se ajustar a uma determinada variável, permitindo, assim, um uso
+otimizado dos recursos. Esses ambientes são, em geral, explorados através de um
+modelo pay-per-use.” [@Vaquero:2008:BCT:1496091.1496100]
 
-Mussum Ipsum, cacilds vidis litro abertis. Nullam volutpat risus nec leo commodo, ut interdum diam laoreet. Sed non consequat odio. Viva Forevis aptent taciti sociosqu ad litora torquent Nec orci ornare consequat. Praesent lacinia ultrices consectetur. Sed non ipsum felis. Leite de capivaris, leite de mula manquis.
+Para viabilizar a migração da infraestrutura computacional, os aplicativos e os
+dados são movidos para grandes centros de processamento de dados, mais
+conhecidos como *data centers*. Os si temas de software presentes nos *data
+centers* provêm aplicações na forma de serviços na Internet
+[@10.1109/MIC.2009.103]. Dessa forma, cria-se uma camada conceitual – a nuvem –
+que abstrai a infraestrutura para execução através de uma interface padrão que
+disponibiliza uma vasta gama de serviços. Uma vez que o usuário consiga se
+conectar a Internet, ele possui todos os recursos a sua disposição, sugerindo
+um poder e uma capacidade infinitos [@4804043].
 
-Ta deprimidis, eu conheço uma cachacis que pode alegrar sua vidis.” Suco de cevadiss deixa as pessoas mais interessantiss. Mé faiz elementum girarzis, nisi eros vermeio. Casamentiss faiz malandris se pirulitá.
+Em suma, podemos destacar três principais aspectos que são novos na computação
+em nuvem, em relação aos modelos anteriores [@Armbrust:EECS-2009-28]:
 
-Em pé sem cair, deitado sem dormir, sentado sem cochilar e fazendo pose. Detraxit consequat et quo num tendi nada. A ordem dos tratores não altera o pão duris Si num tem leite então bota uma pinga aí cumpadi!
+* Ilusão da disponibilidade de recursos ilimitados: o conceito da nuvem sugere
+que o usuário tem em suas mãos um conjunto muito grande de recursos e serviços;
+* Eliminação de um comprometimento e/ou antecedência na contratação dos
+serviços: uma empresa pode começar usando poucos recursos de hardware aumentar
+essa utilização com a necessidade, sem que haja um comprometimento anterior em
+relação a essa quantidade;
+* Habilidade de pagar somente pelos recursos que são utilizados (*pay-per-use*):
+uma vez definida uma métrica para cobrança (i.e. processadores por hora) o
+usuário paga somente pelos recursos utilizados.
 
-Cevadis im ampola pa arma uma pindureta. Diuretics paradis num copo é motivis de denguis. Mauris nec dolor in eros commodo tempor. Aenean aliquam molestie leo, vitae iaculis nisl. Quem manda na minha terra sou Euzis!
+Para aproveitar as simplicidade de acesso a infraestrutura e escalabilidade
+(horizontal e vertical) oferecidas pela computação na nuvem, o processo e as
+ferramentas de desenvolvimento começaram a mudar também. Nesse trabalho,
+focaremos nos ambientes de execução (*Runtime environments*). Mais precisamente,
+no impacto que o aumento de complexidade e funcionalidade que estes ambientes
+vem experimento tem no desempenho dos sistemas que eles dão suporte. No restante
+desta seção iremos explicar melhor esses ambientes de execução, bem como
+caracterizar melhor o problema a ser estudados e os objetivos desse trabalho.
 
-Vehicula non. Ut sed ex eros. Vivamus sit amet nibh non tellus tristique interdum. Pra lá , depois divoltis porris, paradis. Quem num gosti di mum que vai caçá sua turmis! undefined
+## Modelos e Ambientes de Execução
+
+Um ambiente de execução (*runtime environment* ou *runtime system*), tem  como 
+principal função implementar partes do modelo de execução. Já o modelo de
+execução especifica a forma como o fluxo descrito pelo programa é executado. 
+Cada linguagem de programação tem um modelo de execução, o qual tem sua
+especificação e implementação feita em conjunto com a linguagem.
+
+Modelos de execução também pode existir independentemente de linguagens de 
+programação, cujos exemplos seriam a biblioteca POSIX Threads 
+[@Butenhof:1997:PPT:263953], e o modelo de programação Map-Reduce 
+[@Dean:2008:MSD:1327452.1327492], utilizado no Hadoop
+[@Shvachko:2010:HDF:1913798.1914427]. Compiladores e interpretadores também
+participam da implementação do modelo de programação.
+
+Frequentemente não há critérios claros para decidir qual o comportamento de
+idioma é considerado dentro do sistema de execução contra a qual o comportamento
+é "compilada". Como um exemplo simples temos o ambiente de execução da linguagem
+C [@Kernighan:1988:CPL:576122]. Esse ambiente de execução composto por um 
+conjunto particular de instruções que são inseridas pelo compilador no programa
+executável. Entre outras coisas, estas instruções gerenciam a pilha processador,
+criam espaço para as variáveis locais e copiam parâmetros da chamadas de funções
+para o topo da pilha. No outro extremo ambientes de execução podem prestar
+serviços de uma ou máquina virtual, que se escondem até mesmo o conjunto de
+instruções do processador. Esta é a abordagem seguida por muitas linguagens
+interpretadas, tais como AWK [@Aho:1987:APL:29361] e algumas linguagens como
+Java [@Arnold:2000:JPL:556709], que são compiladas em um código de representação
+intermediária, o qual é independente de arquitetura do computador que vai ser executado (bytecode).
+
+Abaixo citamos outros exemplos dessas funcionalidades [@Appel1990]:
+
+* Coleta de "lixo": a gerência automática do armazenamento alocado dinamicamente
+é um dos aspectos mais importantes de diversos ambientes de execução.
+
+* Fluxo de entrada / saída: em sistemas operacionais como o Unix, que não têm
+oferecem facilidades para lidar com fluxo buferizado de entrada/saída, o
+processo deve fornecer seu próprio; este pode ser tratado pelo ambiente de
+execução.
+
+* Chamadas do sistema operacional chama: funcionalidades do sistema operacional
+necessárias para um programa podem ser convenientemente exportadas pelo ambiente
+de execução.
+
+* Gerenciamento de Interrupções e eventos assíncronos: se a linguagem de
+programação tem um mecanismo para lidar com eventos assíncronos, ela conta com o
+ambiente de execução para sua implementação
+
+* Implementação de primitivas em linguagem de montagem: pode ser inconveniente
+para o compilador gerar código para algumas funcionalidades da linguagem de
+programação. Estas funções podem ser implementadas como chamadas de tempo de
+execução a rotinas exportadas pelo ambientes de execução.
+
+Devido a características como eficiência, facilidade de programação e
+portabilidade, linguagens com ambientes de execução cada rico em funcionalidades
+vem sendo muito utilizadas no contexto de computação na nuvem.
+
+## Computação sem servidor (Serverless Computing)
+
+Mesmo utilizando as facilidades de acesso a infraestrutura e escalabilidade
+disponíveis, a execução de sistemas na nuvem ainda demanda preocupações como
+dimensionamento da frota de servidores, armazenamento, banco de dados e tantas
+outras tarefas acessórias.  A computação sem servidor veio como uma resposta a
+esses problemas: e se toda essa responsabilidade ficasse a cargo do seu provedor
+de nuvem?
+
+A computação sem servidor (*serverless computing*)  permite implantar grandes
+aplicações através de funcionalidades (funções) disparadas por gatilhos de ação
+(i.e. clicar num botão, chamadas a APIs e etc). O usuário só paga pelo uso do processamento quando o gatilho é acionado e os preços calculados em janelas de
+tempo pré-definidas (por exemplo, AWS Lambda usa uma janela de 100ms de uso)[@awslambda].
