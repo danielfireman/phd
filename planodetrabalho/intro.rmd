@@ -17,7 +17,7 @@ modelo pay-per-use.” [@Vaquero:2008:BCT:1496091.1496100]
 
 Para viabilizar a migração da infraestrutura computacional, os aplicativos e os
 dados são movidos para grandes centros de processamento de dados, mais
-conhecidos como *data centers*. Os si temas de software presentes nos *data
+conhecidos como *data centers*. Os sistemas de software presentes nos *data
 centers* provêm aplicações na forma de serviços na Internet
 [@10.1109/MIC.2009.103]. Dessa forma, cria-se uma camada conceitual – a nuvem –
 que abstrai a infraestrutura para execução através de uma interface padrão que
@@ -38,14 +38,14 @@ relação a essa quantidade;
 uma vez definida uma métrica para cobrança (i.e. processadores por hora) o
 usuário paga somente pelos recursos utilizados.
 
-Para aproveitar as simplicidade de acesso a infraestrutura e escalabilidade
+Para aproveitar a simplicidade de acesso à infraestrutura e escalabilidade
 (horizontal e vertical) oferecidas pela computação na nuvem, o processo e as
 ferramentas de desenvolvimento começaram a mudar também. Nesse trabalho,
 focaremos nos ambientes de execução (*Runtime environments*). Mais precisamente,
-no impacto que o aumento de complexidade e funcionalidade que estes ambientes
-vem experimento tem no desempenho dos sistemas que eles dão suporte. No restante
-desta seção iremos explicar melhor esses ambientes de execução, bem como
-caracterizar melhor o problema a ser estudados e os objetivos desse trabalho.
+iremos focar no impacto que estes ambientes de execução tem no desempenho dos
+sistemas que eles dão suporte. No restante desta seção iremos explicar melhor
+esses ambientes de execução, bem como caracterizar melhor o problema a ser
+estudados e os objetivos desse trabalho.
 
 ## Modelos e Ambientes de Execução
 
@@ -55,38 +55,39 @@ execução especifica a forma como o fluxo descrito pelo programa é executado.
 Cada linguagem de programação tem um modelo de execução, o qual tem sua
 especificação e implementação feita em conjunto com a linguagem.
 
-Modelos de execução também pode existir independentemente de linguagens de 
+Modelos de execução também podem existir independentemente de linguagens de 
 programação, cujos exemplos seriam a biblioteca POSIX Threads 
 [@Butenhof:1997:PPT:263953], e o modelo de programação Map-Reduce 
 [@Dean:2008:MSD:1327452.1327492], utilizado no Hadoop
 [@Shvachko:2010:HDF:1913798.1914427]. Compiladores e interpretadores também
 participam da implementação do modelo de programação.
 
-Frequentemente não há critérios claros para decidir qual o comportamento de
-idioma é considerado dentro do sistema de execução contra a qual o comportamento
-é "compilada". Como um exemplo simples temos o ambiente de execução da linguagem
-C [@Kernighan:1988:CPL:576122]. Esse ambiente de execução composto por um 
-conjunto particular de instruções que são inseridas pelo compilador no programa
-executável. Entre outras coisas, estas instruções gerenciam a pilha processador,
-criam espaço para as variáveis locais e copiam parâmetros da chamadas de funções
-para o topo da pilha. No outro extremo ambientes de execução podem prestar
-serviços de uma ou máquina virtual, que se escondem até mesmo o conjunto de
-instruções do processador. Esta é a abordagem seguida por muitas linguagens
-interpretadas, tais como AWK [@Aho:1987:APL:29361] e algumas linguagens como
-Java [@Arnold:2000:JPL:556709], que são compiladas em um código de representação
-intermediária, o qual é independente de arquitetura do computador que vai ser executado (bytecode).
+Frequentemente não há critérios claros para decidir que comportamento da
+linguagem de programação deve ser executado pelo ambiente de programação ou
+pelo compilador. Como um exemplo simples temos o ambiente de execução da
+linguagem C [@Kernighan:1988:CPL:576122]. Esse ambiente de execução composto 
+por um conjunto particular de instruções que são inseridas pelo compilador no
+programa executável. Entre outras coisas, estas instruções gerenciam a pilha
+de execução, criam espaço para as variáveis locais e copiam parâmetros da
+chamadas de funções para o topo da pilha. No outro extremo ambientes de execução
+podem prestar serviços de uma máquina virtual, escondendo até mesmo o 
+conjunto de instruções do processador. Esta é a abordagem seguida por muitas 
+linguagens interpretadas, tais como AWK [@Aho:1987:APL:29361] e algumas
+linguagens como Java [@Arnold:2000:JPL:556709], que são compiladas em um código
+de representação intermediária, o qual é independente de arquitetura do
+computador que vai ser executado (bytecode).
 
 Abaixo citamos outros exemplos dessas funcionalidades [@Appel1990]:
 
 * Coleta de "lixo": a gerência automática do armazenamento alocado dinamicamente
 é um dos aspectos mais importantes de diversos ambientes de execução.
 
-* Fluxo de entrada / saída: em sistemas operacionais como o Unix, que não têm
+* Fluxo de entrada / saída: em sistemas operacionais como o Unix, que não
 oferecem facilidades para lidar com fluxo buferizado de entrada/saída, o
 processo deve fornecer seu próprio; este pode ser tratado pelo ambiente de
 execução.
 
-* Chamadas do sistema operacional chama: funcionalidades do sistema operacional
+* Chamadas do sistema operacional: funcionalidades do sistema operacional
 necessárias para um programa podem ser convenientemente exportadas pelo ambiente
 de execução.
 

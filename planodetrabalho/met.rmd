@@ -2,7 +2,7 @@
 
 ## Metodologia {#sec:metod}
 
-Esta seção apresenta um detalhamento da metodologia utilização para execução
+Esta seção apresenta um detalhamento da metodologia seguida para execução
 desse plano de trabalho. A metodologia de pesquisa será predominantemente empírica,
 porém este não será o único método. Dois métodos principais de pesquisa
 científica serão combinados: pesquisa sistemática e pesquisa quantitativa.
@@ -25,8 +25,8 @@ integração e testes de sistema, bem como testes de carga e de regressão.
 Visando atingir as metas propostas, o plano de trabalho será executado em três
 duas principais, cobrindo cada um dos temas discutidos anteriormente:
 
-1. desenvolvimento de mecanismos para diminuição do impacto negativo da um
-*runtime* na utilização de CPU e memória RAM;
+1. desenvolvimento de mecanismos para diminuição do impacto negativo do ambiente
+de execução na utilização de CPU e memória RAM;
 
 1. desenvolvimento de um serviço para auxilio à configuração de *runtimes*
 baseado nas características de execução das aplicações e da carga aplicada;
@@ -34,7 +34,7 @@ baseado nas características de execução das aplicações e da carga aplicada;
 1. generalização/adaptação dos mecanismos citados acima para *runtimes* das
 linguagens mais utilizadas no cenário global;
 
-1. adaptação do mecanismo para gerência semi-automática online (reconfiguração)
+1. adaptação do mecanismo para gerência semi-automática online (reconfiguração).
 
 Cada uma dessas fases seguirá o mesmo conjunto de etapas descritas a seguir:
 

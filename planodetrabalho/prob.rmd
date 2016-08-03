@@ -8,23 +8,24 @@ oferece suporte a escrita de funções em linguagens com ambientes de execução
 bastante complexos, por exemplo, Node.js, Java, C# e Python.
 
 Do ponto de vista dos clientes, temos que as linguagem suportadas nativamente
-pelos principais provedores de serviços na nuvem também são tem seu
-funcionamento auxiliado por ambientes de execução bastante complexos.
+pelos principais provedores de serviços na nuvem também tem seu funcionamento 
+auxiliado por ambientes de execução bastante complexos.
 
-Uma vez que custo de execução adicionado pelo ambiente de execução depende de
+O custo de execução adicionado pelo ambiente de execução depende de
 aspectos tais como[@995163;@DBLP:conf/ipps/JayasenaFRPP15]:
 
-1. aplicação (ões) executando + carga a que a(s) aplicação(ões) está(ão) 
+1. aplicação (ões) executando + carga a que a(s) aplicação(ões) está(ão);
 sujeita(s)
-1. servidor (real ou virtual) utilizado
+1. servidor (real ou virtual) utilizado.
 
-Temos que otimizar aspectos como i) as funções/aplicações que serão co-alocadas,
-ii) parâmetros de configuração do ambiente de execução e iii) do servidor podem
-ter um impacto muito grande no custo total de execução dos clientes e/ou
-provedores de serviços. Estes são os principais problemas que este trabalho se
-propõe a resolver.
+Alguns aspectos associados à execução das aplicações podem ser otimizados: i) as
+funções/aplicações que serão co-alocadas, ii) parâmetros de configuração do 
+ambiente de execução e iii) do servidor podem ter um impacto muito grande no 
+custo total de execução dos clientes e/ou provedores de serviços. Estes são os 
+principais problemas que este trabalho se propõe a resolver.
 
-Assim, o objetivo geral deste trabalho é projetar, desenvolver e avaliar soluções que torne mais eficaz a utilização de recursos por processos suportados
+Assim, o objetivo geral deste trabalho é projetar, desenvolver e avaliar
+soluções que tornem mais eficaz a utilização de recursos por processos suportados
 por ambientes de execução.
 
 Espera-se que as seguintes metas sejam alcançadas no decorrer do doutorado:
