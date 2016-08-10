@@ -1,0 +1,44 @@
+## Business Problem
+A company that has a Java-based, mission-critical service that runs under high utilization. Given this scenario, what is the most cost-beneficial resource type (i.e. 1vCPU, 2vCPUs, etc.) to run the service instances?
+
+## Technical Problem
+What is the allocation type (i.e. 1vCPU, 2vCPUs, etc) that leads to the greatest saturation point[^1] in a Java-based service that runs under high utilization?
+
+[^1]: The saturation point tells that the service has reached its maximum capacity for the specific version (code), configuration and environment [@perfTestingWebSphere].
+
+## Hypotheses
+
+To solve the technical problem we are going to collect one piece of data: the number of requests processed per second (throughput, $T$). Based on this information, we can calculate an indirect metric:
+
+$$avgT(n_{vCPUs}) = \frac{T}{n_{vCPUs}}$$
+
+Where $avgT(n_{VCPUs})$ is the average throughput per available virtual CPU (VCPU), $n_{VCPUs}$ is the number of vCPUs available for execution and $T$ is the throughput. We have everything needed to formally describe the hypotheses:
+
+* $H_{0}$: The maximum throughput increases linearly with the increasing number of vCPUs allocated to run a highly-loaded single-endpoint REST service on an asynchronous event-driven Java™ HTTP server configured with default JVM flags. Or more formally:
+
+$$max(avgT(k)) \approx max(avgT(k+1)),\, \forall k > 0$$
+
+* $H_{1}$: The maximum throughput does not increase linearly with the increasing number of vCPUs 
+allocated to run a highly-loaded single-endpoint REST service on an asynchronous event-driven 
+Java $\textsuperscript{TM}$ HTTP server configured with default JVM flags. Or more formally:
+
+$$\exists k>0, \, max(avgT(k))\,\ne\, max(avgT(k+1))$$
+
+## Experiment design and data collection
+
+The only independent variable used for this experiment was the number of vCPUs available at the virtual machine executing the server. Experiments were conducted using 1, 2 and 4 vCPUs (a.k.a. *Exp1*, *Exp2*, *Exp4*). Each experiment was repeated 10 times.
+
+The load was impressed on the server using a monotonic step-function[@stepFun] described bellow. At every $StepDuration$ seconds, the load was increased by:
+
+$$load(step) = step * n_{vCPUs} * 50, \, \, \forall x,y,\,\, x \leq y \implies load(x) \leq load(y)$$
+
+For all three experiments executed, $StepDuration=10s$. At the beginning of every experiment the server receives a load of 
+
+The only dependent variable collected by the clients was the number of requests successfully attended by the server per second. The collection happened at the end of each $StepDuration$ and was outputted to a file. The output file of each client was then collected and processed to generate one CSV file per experiment run. The main operation done by the processing was to consolidate the throughput. (sum the troughputs calculated by each client)  The code executed to performed the processing can be found  [here](https://github.com/danielfireman/phd/tree/master/projfpcc/scripts/src/clientmerger).
+
+The consolidate view has a CSV form, which contains two columns:
+
+* Load: number of requests per second sent to the server.
+* Throughput: number requests successfully processed by the server per second.
+
+After pre-processing, the column $avgt$ is added. This column represents $avgT(n_{vCPUs})$ and it is calculated by dividing the throughput of each row by the number of available vCPUs available at the VM used to the run the HTTP server. The code used to calculate this and all other indirect metrics can be found [here](https://github.com./danielfireman/phd).

@@ -1,0 +1,11 @@
+The diagram in Figure $\ref{fig:t4avgt_plot}$ gives us some evidence to refute the null hypothesis. To formally verify that, we calculated the 95\% confident interval for mean throughput difference (*Exp4-Exp2*). We found that, with high probability, the mean difference is between `r round(ci.t2.t4.diff[1,1], 2)` and `r round(ci.t2.t4.diff[1,2], 2)` QPS. That result gives us enough confidence to reject our null hypotheses, as running a highly-loaded single-endpoint REST service on an asynchronous event-driven Java $\textsuperscript{TM}$  HTTP server configured with default JVM flags in a 4 vCPUs' VM leads to a worse average throughput than 2 vCPUs.
+
+To summarize our conclusions:
+
+* The maximum throughput does not increase linearly with the increasing number of vCPUs 
+allocated to run a highly-loaded single-endpoint REST service on an asynchronous event-driven 
+Java$\textsuperscript{TM}$  HTTP server configured with default JVM flags ($H_{1}$)
+* The throughput distribution of a highly loaded service is multi-modal
+* The best configuration choice depends a lot on the what is expected from the system in terms of load and resilience:
+     * Running the server in a 1 vCPU VM leads to close to 100QPS saturation point but going beyond this point could bring the server down (throughput goes down to 0)
+    * Running the server in a 2 vCPU VM led to a good average throughput and provide more room beyond the saturation.s
