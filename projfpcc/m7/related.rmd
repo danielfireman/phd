@@ -1,67 +1,27 @@
-## Web Application Scalability: A Model-Based Approach
-Abstract
-Scalability is one of the most important quality attributes of today’s software systems. Yet, despite its importance, scalability in applications is poorly understood. This paper reviews previous work on scalability and presents a model-based view of scalability in Web and other distributed applications. Authors reviewed four models of scalability - Linear scalability, Amdahl’s law, Super-Serial Model and Gustafson’s Law - and showed how they relate to Web and other distributed applications. Vertical and horizontal scalability are analyzed. The applicability of these models is demonstrated with a case study.
+# Related Work {#sec:rel}
 
-My opinion
-This paper presents a pragmatic way of using well known models and regression to estimate capacity and find system bottlenecks. It is great for reviewing single-queue performance analysis laws and basic concepts (speedup, scaleup and so on).
+Scalability is one of the most important quality attributes of today’s software
+systems. Yet, despite its importance, scalability in applications is poorly
+understood. @DBLP:conf/cmg/WilliamsS04 reviewed four models of scalability -
+Linear scalability, Amdahl’s law, Super-Serial Model and Gustafson’s Law - and
+showed how they relate to Web and other distributed applications. The work also
+presents a pragmatic way of using well known models and regression to estimate
+capacity and find system bottlenecks but does not consider runtime systems as
+part of the complexity being modeled.
 
-Even though the the article is somewhat simplistic - considering a single dominant workload and hardware as the only scalability factor - it presents a complete analysis by evaluating vertical and horizontal scalability.
+As modeling a complex system such as JVM, approaches like JVM auto-tuning have
+been increasing in popularity. Performance optimization in the context of
+high-end programs that consume a lot of system resources is very important. 
+@DBLP:conf/ipps/JayasenaFRPP15 described HotSpot Auto-tuner, an offline, 
+automatic tuner that considers the entire JVM and the effect of all the flags.
+Even though it is general-purpose and could lead to quite nice gains in performance,
+Auto-tuner tunning process is very time consuming (~200 minutes). Another major
+drawback of this approach is its offline nature, as the system itself and its
+load characteristics are constantly changing (and have impact on tunning).
 
-How the article relates to my work
-The article presents many concepts and laws that ruled performance analysis for a long time and work for simple systems (or serve as basis for new models). As a model may result as an artifact of my work, it is really good to have a good understanding of those concepts, as well as how they could apply in a domain that is close to mine (web servers versus cloud computing).
-
-## A Web Performance Modeling Process Based on the Methodology of Learning from Data
-Abstract
-Getting accurate performance metric models of a web system is very important to solve the problems about performance analysis, evaluation and capacity planning, etc. Because of the complexity of a web system (e.g. a lot of software and hardware are integrated in the system), using analytical modeling method without integrating performance testing process is not enough to get accurate metric models.
-
-The authors have built a web performance modeling process that considers (learns from) performance testing data as an input to build and validate the model. In the proposed process, performance testing and analytical modeling method are integrated in a systematic and repeatable way. Performance modeling is divided into several phases, for example constructing models and hypothetical conditions, deriving test cases, estimating parameters and validating models.
-
-To demonstrate the process, a performance scalability problem of a real web community system (www.igroot.com) is studied. Experiments showed that result models can be used to demonstrate the performance requirement indexes, estimate the saturation and buckle points, estimate the performance tinning space and facilitate finding performance bottlenecks.
-
-My opinion
-The paper is strongly based on Web Application Scalability: A Model-Based Approach (Williams and Smith). It adds the idea of learning from performance testing data to build a process which integrates test results and analytical modeling, which is very interesting. Even though results look promising, they only tested in one web site.
-Another point is that some inputs need to be determined by benchmarks (i.e. benchmark number of concurrent users.). How to select and configure those benchmarks still not covered by the article.
-
-As the result of the paper is a process proposal. As it is intended to be generally applicable and only one example was shown, it was for me hard to understand how all the options to profile, infer, validate and so on were selected (practical aspects).
-
-How the article relates to my work
-My work is about performance modeling (at least performance evalutation), in particular in the context of cloud computing (this bit, not fully related to the article). I also believe that, because of the complexity of a web system, using analytical modeling without integrating performance testing process is not enough to get accurate metric models. This paper presents a process that does that.
-
-Another two important relations: i) I wasn't considering the idea of a proposing a process, which could be good and ii) the idea of learning from performance testing data seemed promising and I definitely should look more into that.
-
-## Auto-tuning the Java Virtual Machine
-Abstract
-This papers focuses on the problem of tuning the performance of the HotSpot Java Virtual Machine (JVM) run-time flags (parameters). As the HotSpot JVM comes with over 600 flags to choose from, manually selecting a subset to maximize performance is unfeasible.
-
-The solution proposed is called HotSpot Auto-tuner, an offline, automatic tuner that considers the entire JVM and the effect of all the flags. Instead of trying all combinations, the proposed solution organizes the JVM flags into a tree structure by building a flag-hierarchy, which helps us to resolve dependencies on aspects of the JVM such as garbage collector algorithms and JIT compilation, decreasing the configuration search-space.
-
-Experiments with the SPECjvm2008 benchmark suite showed that startup times were improved by an average of 19% within a maximum tuning time of 200 minutes for each. Based on a minimum tuning time of 200 minutes, experiments showed an average performance improvement for 13 DaCapo benchmark programs is 26%.
-
-My Opinion
-I liked the idea of using a flexible open source project as the pillar for the overall solution. Furthermore, using heuristic to increasing the branch out factor in heuristics seems a great idea.
-Given that performance tuning is highly dependent on the environment and the load, 200 minutes of tuning time could be a high price to pay (unfeasible for some).
-
-When compared to the amount information gotten from experiments, I think the discussion could be much better. I ended up the paper missing further discussion of many areas, for instance, why they couldn't achieve better results in the GC area.
-
-How the article relates to my work
-The main goal of the paper is very close to the goal of my work: automatic tuning of JVM. While I would like to try to find correlations and a model (maybe a testing data + modelling process), their proposal is based on heuristics to improve the brute force way, which would lead to more than  combinations. Furthermore, a tuning time of 200 minutes could be unfeasible in some cases.
-
-It was very useful to check out metrics they collect, benchmarks used and how offline could play into all this. Also the way they split the JVM flags (JIT, GC and so on).
-
-## JVM Configuration Parameters Space Exploration for Performance Evaluation of Parallel Applications
-Abstract
-Java Virtual Machine (JVM) is widely used, but some of its mechanisms (garbage collector, threads synchronization and bytecode compiler) could introduce overhead and damage application's performance. To embrace the variety of existing applications, JVM provides different implementations of those mechanisms which could be explicitly configured by the user. In this context appropriately selecting JVM features becomes is a very important task, in particular for high performance, parallel applications.
-
-The main goal of the article is to to explore the configuration space trough JVM parameters. The authors have focused on the parameters that could influence the most on the performance of parallel applications: garbage collector (concurrent mark and sweep x parallel), threads synchronization (biased locking x escape analysis x group locking) and bytecode compiler (background compilation).
-
-Authors have evaluated the performance of parallel applications belonging to the SPECjvm2008 benchmark. The first important result is that JVM's default configuration is not optimal for the target class of applications. Results also show a gain of 32.9% speedup on average trough configuration tuning. Authors ran a  factorial experiment and observed that correlation between the workload characteristics and the relevant parameters to its performance. Finally, applications were grouped according to the most relevant parameters to its performance.
-
-My Opinion
-I found the article goal very nice, but I would like to read more about assumptions made by the authors to select the parameters (why). Furthermore, some of the conclusions were not entirely clear.
-
-On the other hand, the authors have done a comprehensive experimental design ( factorial) and analysis by selecting one class of applications and a subset of the parameters. This seems to be a good way to approach such a complex problem.
-
-How the article relates to my work
-App characterization and classification is a problem that I will need to tackle during my PhD. I liked the way authors described the subset of the problem as  factorial experiment and used correlation to group applications. This a good approach and I might use it as well in some experiments.
-
-The metrics used by the authors (throughput, context switching and memory) are good candidates to be used in my work. Furthermore, pick up an area (i.e. parallel applications) might be a good approach to this complex problem.
+We believe that better understanding the runtime system through  analytically modeling
+could be mixed with application trial runs to help on achieve a fast, online tunning.
+Furthermore it would allow predictions, which is very important on capacity
+planning. This work only scratches the surface by showing how the JVM could
+impact on the overall server speedup.
+which are key

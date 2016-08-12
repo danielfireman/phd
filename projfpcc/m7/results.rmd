@@ -1,3 +1,5 @@
+# Experimental Results {#sec:results}
+
 ```{r setup_results, include=FALSE}
 knitr::opts_knit$set(kable.force.latex = TRUE)
 knitr::opts_chunk$set(fig.pos = 'H')
@@ -8,6 +10,7 @@ require(dplyr)
 require(resample)
 require(cowplot)
 require(gridExtra)
+require(xtable)
 ```
 
 ```{r datasets, cache=TRUE}
@@ -60,71 +63,109 @@ perf.plot <- function(data, col, yTitle) {
  ggplot(ci.data.frame(data, col), aes(x = load, y = mean)) +
   geom_errorbar(aes(ymin = lower, ymax = upper), width=.2, size=0.5, color = "darkblue")+
   geom_point(size = 1, color = "black") +
-  geom_line(alpha=0.5, color = "darkgrey") +
   geom_bar(stat="identity", fill="white", colour="darkgrey", alpha=0.1) +
   ylab(yTitle) +
   xlab("Load (Req/Sec)") +
-  scale_color_manual(values = COLOR_BLIND_PALETTE)
+  scale_color_manual(values = COLOR_BLIND_PALETTE) +
+  theme(
+    text = element_text(size=8),
+    axis.text = element_text(size = 8))
 }
 ```
-## Exp1: Running the HTTP Server in a 1-vCPU VM
+## Exp1: Running Server in a 1-vCPU VM
 
-The summary of the result set for the experiment *Exp1* is shown bellow:
+<!-- The result set summary for *Exp1* is shown bellow: -->
 
-```{r, t1_sum, echo=FALSE}
-knitr::kable(summary(t1), caption = "Exp1 results summary.", longtable = FALSE)
-```
+<!-- ```{r, t1_sum, comment=NA, results='asis'} -->
+<!-- # align param must have an extra col for the row.id, if it is the case. -->
+<!-- t1_aux <- t1 -->
+<!-- colnames(t1_aux) <- c("Load", "Throughput", "avgT") -->
+<!-- print.xtable(xtable(summary(t1_aux), caption = "Exp1 results summary.", align = "llll"), -->
+<!--              comment = FALSE, -->
+<!--              floating = TRUE, -->
+<!--              type = "latex", -->
+<!--              table.placement = "H", -->
+<!--              include.rownames=FALSE, -->
+<!--              hline.after = FALSE) -->
+<!-- ``` -->
 
-A quick look at Table 1 tells us that the maximum load impressed on the server was 1500 queries per second (QPS). It also shows a server throughput peak of 1201.9 QPS. For this particular experiment, *throughput* and *avgt* are equal. This is because the virtual machine used to run the server has only one vCPU.
-
-Throughput mean and median are pretty close, which indicates a peak closer to the center of the distribution. Drilling down into the experiments results, we show bellow  distribution of load versus throughput:
-
-```{r t1_plot,  echo=FALSE, fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, ig.cap="Graphical display of the throughput handled by the server given a certain load (1 vCPU).", cache=TRUE}
-perf.plot(t1, "throughput", "T (Req/Sec)")
-
+```{r t1_ci, cache=TRUE}
 ci.t1 <- ci.data.frame(t1, "throughput")
 
 max.troughput.t1 <- ci.t1 %>% filter(mean == max(ci.t1$mean))
 min.troughput.t1 <- ci.t1 %>% filter(mean == min(ci.t1$mean))
 ```
 
-The error bars indicate a 95\% confident interval for the mean. The confidence interval was computed using Bootstrap re-sampling (simulation-based statistical estimation technique [@efron1994introduction]) with 10,000 trials because distributions were non-normal.
+During this experiment, client(s) sent up to 1500 requests per second (RPS).
+For this particular experiment, throughput (T) and average throughput (avgT) are
+equal because the virtual machine used to run the server has only one vCPU. 
 
-The plot shows a pretty much linear server throughput increase until `r round(min.troughput.t1$mean, 2)`, at which point it is being impressed  a load of `r min.troughput.t1$load` QPS. This is called saturation point and at this point the server is at full capacity.
+Figure \ref{fig:t1_plot} presents the summary results of this experiment. 
+Error bars throughout this article indicate a 95\% confident interval for the mean.
+The confidence interval was computed using Bootstrap re-sampling (simulation-based
+statistical estimation technique [@efron1994introduction]) with 10,000 trials
+because distributions were non-normal.
 
-After this point the server is overloaded and as more load is added to the system (simulating clients in a e-commerce website, for instance), the only effect is that the accept queue at the server will grow in size [@Banga:1999:MCW:598682.598725]. At some point requests are going to start to timeout and fail, leading to a decrease in throughput. Besides that, the runtime itself starts needed more bookkeeping, for instance, more stop-of-the-world pauses [@995163] happen and more CPU is consumed by the garbage collector.
+We could see a pretty much linear server throughput increase until
+`r round(max.troughput.t1$mean, 2)` RPS, at which point it is being impressed 
+a load of `r min.troughput.t1$load` RPS. That is the saturation point and at this
+point the server is operating at its full capacity.
+
+```{r t1_plot,  fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (1 vCPU)."}
+perf.plot(t1, "throughput", "T (Req/Sec)")
+```
+
+After the saturation point the server is overloaded and as the load increases 
+(simulating clients in a e-commerce website, for instance), the only
+effect is the growth of the server's accept queue [@Banga:1999:MCW:598682.598725].
+At some point requests are going to start to timeout and fail, leading to a decrease
+in throughput. Besides that, the runtime itself starts needed more bookkeeping,
+for instance, more stop-of-the-world pauses [@995163] happen and more CPU is consumed by
+the garbage collector.
 
 We believe all these reasons could explain:
 
-1. Steep decrease in the throughput: there is more and more competition for the only vCPU available
-1. Increase in the size of the error bars: due to the unpredictability nature of the GC and other runtime components leads to a great variance in the system performance
+* Steep decrease in the throughput: there is more and more competition for the
+only vCPU available
+* Increase in the size of the error bars: due to the unpredictability nature of
+the GC and other runtime components leads to a great variance in the system performance
 
-We better understand how these factors correlate is part our future plans. Finally, at the very end (`r min.troughput.t1$load` load) we have a practically inoperative server, successfully answering `r round(min.troughput.t1$mean, 2)` QPS.
+To better understand how these factors correlate is part our future plans. Finally, at the very end (`r min.troughput.t1$load` load) we have a practically inoperative server, successfully answering `r round(min.troughput.t1$mean, 2)` RPS
 
-## Exp2: Running the HTTP Server in a 2-vCPUs VM
+## Exp2: Running Server in a 2-vCPUs VM
 
-At this experiment, we have the HTTP server running in a virtual machine with 2 vCPUs. As there is nothing new in the data summary, lets jump straight to the expert throughput distribution plot, which is shown bellow:
-
-```{r t2_plot,  echo=FALSE, fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Graphical display of the throughput handled by the server given a certain load (2 vCPUs).", cache=TRUE}
-perf.plot(t2, "throughput", "T (Req/Sec)")
-
+```{r cit2_data, cache=TRUE}
 ci.t2 <- ci.data.frame(t2, "throughput")
 ci.t2.avgt <- ci.data.frame(t2, "avgt")
-```
-```{r echo=FALSE, cache=TRUE}
 max.troughput.t2 <- ci.t2 %>% filter(mean == max(ci.t2$mean))
 min.troughput.t2 <- ci.t2 %>% filter(load == 3000)
 ```
 
-Again, the error bars indicate a 95\% confident interval for the mean. The confidence interval was computed using Bootstrap re-sampling (simulation-based statistical estimation technique [@efron1994introduction]) with 10,000 trials because distributions were non-normal.
+During this experiment, the HTTP server was running in a virtual machine with 2 vCPUs.
+Again, jumping straight to the throughput distribution plot, which is presented
+in Figure \ref{fig:t2_plot}, one could notice is the double size of vertical
+axis when compared to *Exp1* (\ref{fig:t1_plot}).
 
-First thing to notice is the double size of vertical axis when compared to *Exp1*. At a first glance, this seems expected: we doubled the server capacity, we expect the throughput to double (hold tight, you will see that this is not always true). The shape of the curve is also very similar to Figure $\ref{fig:t1_plot}$ and we believe the steep decrease/size of the error bars are due to the same reasons described in *Exp1*.
+At this time, the server reaches saturation at `r max.troughput.t2$load`
+RPS, handling `r round(max.troughput.t2$mean, 2)` requests per second on average.
+In other words, our expectations were confirmed: doubling the amount of resources
+from 1 to 2 vCPUs almost doubles the throughput (precisely  `r round(max.troughput.t2$mean/max.troughput.t1$mean, 2)`).
 
-Another important point is the server reaches saturation at `r max.troughput.t2$load` QPS, handling `r round(max.troughput.t2$mean, 2)` requests per second on average. In other words, doubling the amount of resources leads to the almost linear speedup (precisely  `r round(max.troughput.t2$mean/max.troughput.t1$mean, 2)`). On the other extreme, at the right-hand side of the chart we see a stabilization trend around `r round(min.troughput.t2$mean, 0)` QPS. We need more experiments to increase our confidence, but it seems that adding the extra core increases the chance to the system to keep operating - even if in a very inefficient way.
+```{r t2_plot,  fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (2 vCPUs). Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling."}
+perf.plot(t2, "throughput", "T (Req/Sec)")
+```
 
-Finally, bellow we compare average throughput per core observed in *Exp1* and *Exp2* :
+On the other extreme, at the right-hand side of the chart we see a stabilization
+trend around `r round(min.troughput.t2$mean, 0)` RPS We need more experiments to
+increase our confidence, but it seems that adding the extra core increases the
+chance to the system to keep operating - even if in a very inefficient way.
 
-```{r t1t2_plot,  echo=FALSE, fig.align="center", fig.pos="H",fig.height=2, fig.width=3.5, fig.cap="Comparing Exp1 and Exp2 average throughput (avgT)", cache=TRUE}
+Finally, the shape of the curve is also very similar to Figure \ref{fig:t1_plot} and we
+believe the steep decrease after saturation point and the size of the error bars
+are due to the same reasons described in *Exp1*. Figure \ref{fig:t1t2_plot} compares
+average throughput per core observed in *Exp1* and *Exp2*:
+
+```{r t1t2_plot,  echo=FALSE, fig.align="center", fig.pos="H",fig.height=2, fig.width=3.5, fig.cap="Comparing Exp1 and Exp2 avgT. Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling."}
  ggplot() +
   geom_point(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), size = 2) +
   geom_line(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), alpha=0.2, color = "darkgrey") +
@@ -133,51 +174,63 @@ Finally, bellow we compare average throughput per core observed in *Exp1* and *E
   geom_line(data=ci.t2.avgt, aes(x=load/2, y=mean, color="2 vCPUs"), alpha=0.1) +
   geom_errorbar(data=ci.t2.avgt, aes(x=load/2, ymin = lower, ymax = upper, color="2 vCPUs"), width=.2, size=0.5)+
   ylab("avgT (Req/Sec)") +
-  xlab("Load (Req/Sec)") +
+  xlab("Average Load per vCPU (Req/Sec)") +
   scale_color_manual(values = COLOR_BLIND_PALETTE) +
-  guides(colour=guide_legend(title=NULL))
+  guides(colour=guide_legend(title=NULL)) +
+  theme(
+    text = element_text(size=8),
+    legend.position = c(0.15, 0.9),
+    axis.text = element_text(size = 8))
 ```
 
-To be in pair with the averaged throughput, we averaged the QPS as well. As one can see the, there is no statistical evidence of difference in the curves, which confirms our prior analysis.
+To be in pair with the averaged throughput, we averaged the load per vCPU as well.
+As one can see the, there is no statistical evidence of difference in the curves,
+which confirms our prior analysis.
 
-## Exp4: Running the HTTP Server in a 4-vCPUs VM
+## Exp4: Running Server in a 4-vCPUs VM
 
-In this case we have the HTTP server running in a virtual machine with 4 vCPUs. The summary of the result set for the experiment is shown bellow:
-
-```{r, t4_sum, echo=FALSE}
-knitr::kable(summary(t4), caption = "Exp4 results summary.", longtable= FALSE)
-```
-
-To our surprise, the maximum throughput handled by the server is only `r round(max(t4$throughput), 2)` QPS. Median and mean have close values and those are close to the ones in *Exp2* (or twice as big as *Exp1*). The next step is to look at the distribution chart, which is shown bellow:
-
-```{r t4_plot,  fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Graphical display of the throughput handled by the server given a certain load (4 vCPUs).", cache=TRUE}
-perf.plot(t4, "throughput", "T (Req/Sec)")
-
+```{r cache=TRUE}
 ci.t4 <- ci.data.frame(t4, "throughput")
 ci.t4.avgt <- ci.data.frame(t4, "avgt")
-```
-```{r echo=FALSE, cache=TRUE}
 max.troughput.t4 <- ci.t4 %>% filter(mean == max(ci.t4$mean))
 ```
 
-Again, the error bars indicate a 95\% confident interval for the mean. The confidence interval was computed using Bootstrap re-sampling (simulation-based statistical estimation technique [@efron1994introduction]) with 10,000 trials because distributions were non-normal.
+In this case we have the HTTP server running in a virtual machine with 4 vCPUs.
+To our surprise, the maximum throughput handled by the server was only 
+`r round(max.troughput.t4$mean, 2)` RPS. The peak throughput was reached under a 
+load of `r round(max.troughput.t4$load, 2)` RPS. Figure \ref{fig:t4_plot} shows
+distribution chart:
 
-The first thing that calls out our attention is the bi-modal shape of the distribution. More importantly, looking at the confidence intervals, we could say this with quite high statistical confidence. That could be many reasons for that and investigating those reasons is out of the scope of this study.
+```{r t4_plot,  fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (4 vCPUs). Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling."}
+perf.plot(t4, "throughput", "T (Req/Sec)")
+```
 
-As the distribution is bi-modal and we do not see a clear decrease trend, we can not tell what is the server saturation point based on these results. In any case, the maximum throughput handled by the server is `r round(max.troughput.t4$mean, 2)` QPS, which happened `r max.troughput.t4$load` QPS load. Finally, to verify how efficient the usage of each core was on average, we show bellow $avgT$ chart for *Exp4* and *Exp1* results:
+The first thing that calls out our attention is the bi-modal shape of the distribution.
+More importantly, looking at the confidence intervals, we could say this with quite high
+statistical confidence. That could be due to many reasons  and investigating those
+reasons is definitely in our future work.
 
-```{r t4avgt_plot,  fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Comparing Exp1 and Exp4 average throughput", cache=TRUE}
+Figure \ref{fig:t4avgt_plot} summarizes experiment results by comparing the
+average throughput versus average load per core in all cases. It provides us
+with visual evidence to refute the null hypothesis, as the average throughput of
+*Exp4* is far more worse than the other two cases. 
+
+```{r t4avgt_plot,  fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Comparing average troughput from servers running at VMs with 1, 2 and 4 vCPUs available. Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling.", cache=TRUE}
  ggplot() +
   geom_point(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), size = 2) +
-  geom_line(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), alpha=0.2, color = "darkgrey") +
   geom_errorbar(data=ci.t1, aes(x=load, ymin = lower, ymax = upper, color="1 vCPU"), width=.2, size=0.5)+
-  geom_point(data=ci.t4.avgt, aes(x=load/2, y=mean, color="4 vCPUs"), size = 2) +
-  geom_line(data=ci.t4.avgt, aes(x=load/2, y=mean, color="4 vCPUs"), alpha=0.1) +
-  geom_errorbar(data=ci.t4.avgt, aes(x=load/2, ymin = lower, ymax = upper, color="4 vCPUs"), width=.2, size=0.5)+
+  geom_point(data=ci.t2.avgt, aes(x=load/2, y=mean, color="2 vCPUs"), size = 2) +
+  geom_errorbar(data=ci.t2.avgt, aes(x=load/2, ymin = lower, ymax = upper, color="1 vCPU"), width=.2, size=0.5)+
+  geom_point(data=ci.t4.avgt, aes(x=load/4, y=mean, color="4 vCPUs"), size = 2) +
+  geom_errorbar(data=ci.t4.avgt, aes(x=load/4, ymin = lower, ymax = upper, color="4 vCPUs"), width=.2, size=0.5)+
   ylab("avgT (Req/Sec)") +
-  xlab("Load (Req/Sec)") +
+  xlab("Average Load per vCPU (Req/Sec)") +
   scale_color_manual(values = COLOR_BLIND_PALETTE) +
-  guides(colour=guide_legend(title=NULL))
+  guides(colour=guide_legend(title=NULL)) +
+  theme(
+    text = element_text(size=8),
+    legend.position = c(0.15, 0.9),
+    axis.text = element_text(size = 8))
 ```
 
 ```{r t2t4diffpvalue, echo=FALSE, cache=TRUE}
@@ -188,3 +241,24 @@ boot_diff <- bootstrap2(
   R = NUM_RESAMPLES)
 ci.t2.t4.diff <- CI.percentile(boot_diff, probs = c(.005, .995))
 ```
+
+To formally verify that, we calculated the 95\% confident interval for mean 
+throughput difference (*Exp4-Exp2*). We found that, with high probability, the 
+mean difference is between `r round(ci.t2.t4.diff[1,1], 2)` and 
+`r round(ci.t2.t4.diff[1,2], 2)` QPS. That result gives us enough confidence to
+reject our null hypotheses, as running a highly-loaded
+single-endpoint REST  service on an asynchronous event-driven Java
+$\textsuperscript{TM}$  HTTP server  configured with default JVM flags in a 4
+vCPUs' VM leads to a worse average  throughput than 2 vCPUs.
+
+## Threats to Validity
+
+Even though JVM is multi-platform, performance differences might arise when
+changing from one platform to the other. This work used only 64-bit Linux-based
+virtual machines. We also performed experiments only using Java HotSpot Virtual
+Machine
+
+Other threats to external validity relate to the application and load characteristics.
+Even though the no-op request handling can be useful to isolate web framework and
+runtime overhead, it might not be representative. Same applying to the step-function
+used to generate load, which does not consider impact of burst traffic, for instance.
