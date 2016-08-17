@@ -9,31 +9,31 @@ more data, or both. As they grow, it is important to maintain their performance
 (responsiveness or throughput), as it has direct impact on business objectives
 [Smith and Williams 2002]. 
 
-For example, the highest priority for nearly all retailers is to drive revenueand
-turn a profit. So, could the effect of not considering the performance of the
+For example, the highest priority for nearly all retailers is to drive revenue
+and turn a profit. So, could the effect of not considering the performance of the
 website be really that detrimental? The answer is a bold yes. Some examples are:
 i) lost in revenue led by website failures or slow down during peak times or ii)
 funds drained from important projects due to patchwork solutions by adding more
 hardware and software [1]
 
 Yet, despite its importance, scalability of modern applications is poorly
-understood. On one hand, we have applications business-logic and workload keep growing in complexity.
-On the other hand, fast-paced time-to-market and cloud
+understood. On the one hand, we have applications business-logic and workload
+keep growing in complexity. On the other hand, fast-paced time-to-market and cloud
 computing platforms have contributed to popularize the usage of languages based
 on complex runtime systems, being Java \textsuperscript{TM} one the most used.
 
 In this context, JVM (Java Virtual Machine) comes with a set of default parameters,
 trying to provide adequate performance out of the box for the broadest range of
-application-execution resource pairs. However, because no two applications are alike or use the runtime in exactly the
-same fashion, there is no guarantee that any single set of parameters will be
-perfectly suited for every pair. This reality highlights how important is to
-conduct focused performance evaluation and tunning at runtime level. Classic
-modelling techniques do not consider runtime complexity [@DBLP:conf/cmg/WilliamsS04] and 
-automatic tunning [@DBLP:conf/ipps/JayasenaFRPP15] remains offline and time consuming.
+application-execution resource pairs. However, because no two applications are
+alike or use the runtime in exactly the same fashion, there is no guarantee that
+any single set of parameters will be perfectly suited for every pair. This reality
+highlights how important is to conduct focused performance evaluation and tunning at runtime
+level. Classic modelling techniques do not consider runtime complexity [@DBLP:conf/cmg/WilliamsS04]
+and  automatic tunning [@DBLP:conf/ipps/JayasenaFRPP15] remains offline and time consuming.
 
 This paper presents a rather surprising result: with high probability, a highly-loaded
 no-op REST endpoint running on an asynchronous event-driven Java $\textsuperscript{TM}$
-HTTP server does scaleup linearly (much worse than that). By running series of
+HTTP server does not scaleup linearly (much worse than that). By running series of
 experiments, we found out that, with high statistical confidence, the
 average throughput per-core of the aforementioned service running on a virtual
 machine (VM) with 2 available cores is better than the same service running on a VM

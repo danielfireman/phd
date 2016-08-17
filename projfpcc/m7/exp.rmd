@@ -1,22 +1,20 @@
 # Methodology {#sec:met} 
 
-On one hand performance has a direct and important impact on business objectives.
-On the other hand, every service has a unique set of requirements and often
-execute in resources which vary in vastly different ways. As an attempt to
-provide adequate performance out of the box for the broadest range of
-application-execution resource pairs, JVM (Java$\textsuperscript{TM}$ Virtual
-Machine) comes  with a set of default parameters.
+On the one hand performance has a direct and important impact on business
+objectives. On the other hand, every service has a unique set of
+requirements and often execute in resources which vary in vastly different
+ways. As an attempt to provide adequate performance out of the box for the
+broadest range of application-execution resource pairs, JVM
+(Java$\textsuperscript{TM}$ Virtual Machine) comes  with a set of default
+parameters.
 
-However, because no two applications are alike or use the runtime in exactly the
-same fashion, there is no guarantee that any single set of parameters will be
-perfectly suited for every pair. This reality highlights how important is to
-conduct focused performance evaluation at runtime level. Thus, our goal with this
-paper is to shed some light on this issue by assessing how the overhead that is
-not application-specific (i.e. HTTP request handling framework, JVM maintenance 
-tasks) impacts an asynchronous event-driven HTTP server that runs under high utilization.
+Our goal with this paper is to assess how the overhead that is
+not application-specific (i.e. HTTP request handling framework, JVM
+maintenance  tasks) impacts an asynchronous event-driven HTTP server that
+runs under high utilization.
 
-In other words, our main goal to find which configuration leads to the greatest
-saturation point[^1]. To do so, clients [^2] collect one piece of data: the number of requests processed per second (throughput, $T$). Based on this information, we can calculate an indirect metric:
+In other words, we would like to find which VM configuration leads to the
+greatest saturation point[^1]. To do so, clients [^2] collect one piece of data: the number of requests processed per second (throughput, $T$). Based on this information, we can calculate an indirect metric:
 
 [^1]: The saturation point tells that the service has reached its maximum capacity for the specific version (code), configuration and environment [@perfTestingWebSphere].
 
@@ -24,7 +22,7 @@ saturation point[^1]. To do so, clients [^2] collect one piece of data: the numb
 
 $$avgT(n_{vCPUs}) = \frac{T}{n_{vCPUs}}$$
 
-Where $avgT(n_{VCPUs})$ is the average throughput per available virtual CPU (VCPU), $n_{VCPUs}$ is the number of vCPUs available for execution and $T$ is the throughput. Based on the latter, we could to formally express the experiment hypotheses:
+Where $avgT(n_{VCPUs})$ is the average throughput per available virtual CPU (VCPU), $n_{VCPUs}$ is the number of vCPUs available for execution and $T$ is the throughput. Based on the latter, we can formally express the experimental hypotheses:
 
 * $H_{0}$: The maximum throughput increases linearly with the increasing number of vCPUs allocated to run a highly-loaded single-endpoint REST service on an asynchronous event-driven Java™ HTTP server configured with default JVM flags. Or more formally:
 
@@ -38,22 +36,19 @@ $$\exists k>0, \, max(avgT(k))\,\ne\, max(avgT(k+1))$$
 
 ## Experimental Setup
 
-To achieve the experiment goal, the Java HTTP server business logic overhead was trimmed down.
-The request handling internals was handled by i) Netty [@Maurer:2015:NA:2838857], an
-asynchronous event-driven network application framework and ii) Jooby [@jooby],
-a micro web framework for Java, both without any custom parameters or
-configuration. The request handling logic was negligible, as well as the request
-and response payloads[^3]. The Java HotSpot Virtual Machine was used in all
-experiments.
+To achieve the experiment goal, the Java HTTP server business logic overhead was trimmed down. The request handling internals was handled by i) Netty [@Maurer:2015:NA:2838857], anasynchronous event-driven network application
+framework and ii) Jooby [@jooby], a micro web framework for Java, both without
+any custom parameters or configuration. The request handling logic was negligible, as well as the request and response payloads[^3]. The Java HotSpot Virtual Machine was used in all experiments.
 
 [^3]: Code can be found at https://git.io/v64D7.
 
-The load was impressed on the server using the monotonic step-function[@stepFun]
-described bellow. At every 10 seconds, the load was increased by:
+The load was impressed on the server using the monotonically increasing 
+step-function[@stepFun] described bellow. At every 10 seconds, the load was
+increased by:
 
 $$load(i) = i \cdot n_{vCPUs} \cdot 50, \, \forall x,y,\,\, x \leq y \implies load(x) \leq load(y)$$
 
-Where $i$ is the index of the current step. At the beginning of every experiment the server received a load of $n_{vCPUs} * 50$ QPS. This warm up phase aimed to
+Where $i$ is the index of the current step. At the beginning of every experiment the server received a load of $n_{vCPUs} * 50$ QPS. This warm up phase aims at
 mitigate the impact of Java's Just In Time (JIT) compiler and other internal JVM
 mechanisms.
 
@@ -66,11 +61,11 @@ configuration.
 \begin{table}[H]
 \centering
 \begin{tabular}{lcccc}
-  Name & \#vCPUs & RAM(GB) & Disk(GB) & \#Clients \\ 
+  Name & \#vCPUs & RAM(GB) & Disk(GB) \\ 
   \hline\hline
-  Exp1 & 1 & 0.50 & 10.00 & 1 \rule{0pt}{3ex} \\ 
-  Exp2 & 2 & 4.00 & 60.00 & 3 \\ 
-  Exp4 & 4 & 8.00 & 90.00 & 6 \\ 
+  Exp1 & 1 & 0.50 & 10.00 \rule{0pt}{3ex} \\ 
+  Exp2 & 2 & 4.00 & 60.00 \\ 
+  Exp4 & 4 & 8.00 & 90.00 \\ 
 \end{tabular}
 \caption{Experiment setup.} 
 \label{tab:expsetup}
@@ -84,7 +79,7 @@ expect a speedup very close to linear[@DBLP:conf/cmg/WilliamsS04].
 In other words, the degree of parallelism in the application is such that it could
 make (almost) full use of the additional resources provided by scaling.
 
-To our surprise, experiment results refute that hypothesis. These results are
+To our surprise, experimental results refute that hypothesis. These results are
 presented at next Section.
 
 <!--Each client output the number of requests successfully attended by the

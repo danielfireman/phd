@@ -2,7 +2,7 @@
 
 This paper presents a rather surprising result: with high probability, a highly-loaded
 no-op REST endpoint running on an asynchronous event-driven Java $\textsuperscript{TM}$
-HTTP server does scaleup linearly (much worse than that). 
+HTTP server does not scaleup linearly (much worse than that). 
 
 By running series of experiments, we have found that, with high statistical confidence, the
 average throughput per-core of the aforementioned service running on a virtual

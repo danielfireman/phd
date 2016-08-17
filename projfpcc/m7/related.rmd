@@ -1,7 +1,7 @@
 # Related Work {#sec:rel}
 
 Scalability is one of the most important quality attributes of today’s software
-systems. Yet, despite its importance, scalability in applications is poorly
+systems. Yet, despite its importance, application's scalability is poorly
 understood. @DBLP:conf/cmg/WilliamsS04 reviewed four models of scalability -
 Linear scalability, Amdahl’s law, Super-Serial Model and Gustafson’s Law - and
 showed how they relate to Web and other distributed applications. The work also
@@ -9,19 +9,18 @@ presents a pragmatic way of using well known models and regression to estimate
 capacity and find system bottlenecks but does not consider runtime systems as
 part of the complexity being modeled.
 
-As modeling a complex system such as JVM, approaches like JVM auto-tuning have
+As modeling a complex system such as JVM is very hard, approaches like JVM auto-tuning have
 been increasing in popularity. Performance optimization in the context of
 high-end programs that consume a lot of system resources is very important. 
 @DBLP:conf/ipps/JayasenaFRPP15 described HotSpot Auto-tuner, an offline, 
 automatic tuner that considers the entire JVM and the effect of all the flags.
 Even though it is general-purpose and could lead to quite nice gains in performance,
-Auto-tuner tunning process is very time consuming (~200 minutes). Another major
+Auto-tuner tunning process is very time consuming (200+ minutes). Another major
 drawback of this approach is its offline nature, as the system itself and its
 load characteristics are constantly changing (and have impact on tunning).
 
 We believe that better understanding the runtime system through  analytically modeling
-could be mixed with application trial runs to help on achieve a fast, online tunning.
+could be mixed with application trial runs to help to achieve a fast, online tunning.
 Furthermore it would allow predictions, which is very important on capacity
 planning. This work only scratches the surface by showing how the JVM could
 impact on the overall server speedup.
-which are key

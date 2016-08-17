@@ -96,7 +96,7 @@ max.troughput.t1 <- ci.t1 %>% filter(mean == max(ci.t1$mean))
 min.troughput.t1 <- ci.t1 %>% filter(mean == min(ci.t1$mean))
 ```
 
-During this experiment, client(s) sent up to 1500 requests per second (RPS).
+During this experiment, clients sent up to 1500 requests per second (RPS).
 For this particular experiment, throughput (T) and average throughput (avgT) are
 equal because the virtual machine used to run the server has only one vCPU. 
 
@@ -108,7 +108,7 @@ because distributions were non-normal.
 
 We could see a pretty much linear server throughput increase until
 `r round(max.troughput.t1$mean, 2)` RPS, at which point it is being impressed 
-a load of `r min.troughput.t1$load` RPS. That is the saturation point and at this
+a load of `r max.troughput.t1$load` RPS. That is the saturation point and at this
 point the server is operating at its full capacity.
 
 ```{r t1_plot,  fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (1 vCPU)."}
@@ -118,10 +118,9 @@ perf.plot(t1, "throughput", "T (Req/Sec)")
 After the saturation point the server is overloaded and as the load increases 
 (simulating clients in a e-commerce website, for instance), the only
 effect is the growth of the server's accept queue [@Banga:1999:MCW:598682.598725].
-At some point requests are going to start to timeout and fail, leading to a decrease
-in throughput. Besides that, the runtime itself starts needed more bookkeeping,
-for instance, more stop-of-the-world pauses [@995163] happen and more CPU is consumed by
-the garbage collector.
+At some point requests are going to start to timeout and fail, leading to a decrease in throughput. Besides that, the runtime itself starts neededing more
+bookkeeping, for instance, more stop-of-the-world pauses [@995163] happen and 
+more CPU is consumed by the garbage collector.
 
 We believe all these reasons could explain:
 
@@ -205,12 +204,11 @@ distribution chart:
 perf.plot(t4, "throughput", "T (Req/Sec)")
 ```
 
-The first thing that calls out our attention is the bi-modal shape of the distribution.
-More importantly, looking at the confidence intervals, we could say this with quite high
-statistical confidence. That could be due to many reasons  and investigating those
+The first thing that calls out our attention is the bi-modal shape of the
+distribution.  That could be due to many reasons and investigating those
 reasons is definitely in our future work.
 
-Figure \ref{fig:t4avgt_plot} summarizes experiment results by comparing the
+Figure \ref{fig:t4avgt_plot} summarizes experimental results by comparing the
 average throughput versus average load per core in all cases. It provides us
 with visual evidence to refute the null hypothesis, as the average throughput of
 *Exp4* is far more worse than the other two cases. 
