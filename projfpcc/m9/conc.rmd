@@ -1,0 +1,23 @@
+# Conclusions and Next Steps {#sec:conc}
+
+This paper presents a rather surprising result: with high probability, a highly-loaded
+no-op REST endpoint running on an asynchronous event-driven Java $\textsuperscript{TM}$
+HTTP server does not scaleup linearly (much worse than that). 
+
+By running series of experiments, we have found that, with high statistical confidence, the
+average throughput per-core of the aforementioned service running on a virtual
+machine (VM) with 2 available cores is better than the same service running on a VM
+with 4 cores. 
+
+Our experiments also showed that, when running in VMs with one and two cores 
+available, the server throughput decreases steeply after saturation. We believe
+this is because the JVM increases the competition for CPU to execute internal
+mechanisms such as garbage collection. This also reflects in a much bigger
+variance in the server performance.
+
+Finally, another interesting result was that, when running in a VM with 4 cores, the
+server has a multi-modal distribution of the throughput. Understand this further
+is the bulk of our future work.
+
+
+

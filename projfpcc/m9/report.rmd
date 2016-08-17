@@ -1,0 +1,61 @@
+---
+documentclass: sigplanconf
+classoption:
+  - preprint
+  - numbers
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{graphicx}
+  - \usepackage{float}
+output:
+  pdf_document:
+    number_sections: true
+    latex_engine: pdflatex
+    keep_tex: true
+    template: null  # needed to make the use of sigplan documentclass.
+bibliography: bib.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+\title{Stretching Java™ HTTP Servers in the multi-core world}
+
+\authorinfo{}
+           {}
+           {}
+\maketitle
+
+\begin{abstract}
+Despite its importance, scalability of modern applications is poorly
+understood. On the one hand, applications business-logic and workload keep
+growing in complexity. On the other hand, fast-paced time-to-market and cloud
+computing platforms have contributed to popularize the usage of languages
+based on complex runtime systems, being Java \textsuperscript{TM} one of
+the most used.
+
+Because no two applications are alike or use the runtime in exactly the
+same fashion, there is no guarantee that any single set of parameters will be
+perfectly suited for every pair. This reality highlights how important it is
+to conduct focused performance evaluation and tunning at runtime level. 
+
+By running series of experiments, we found out that, with high statistical
+confidence, the average throughput per-core of the aforementioned service
+running on a virtual machine (VM) with 2 available cores is better than the
+same service running on a VM with 4 cores. We are well aware that these
+results ask for more investigation and answer those questions is definitely part of our future work.
+\end{abstract}
+
+```{r child = 'intro.rmd'}
+```
+```{r child = 'related.rmd'}
+```
+```{r child = 'exp.rmd'}
+```
+```{r child = 'results.rmd'}
+```
+```{r child = 'conc.rmd'}
+```
+
+# References {#references}
