@@ -37,8 +37,11 @@ t4 <- read.csv("../data/4cores/throughput.csv") %>%
 # Indirect Factors
 ## Throughput per VCPU
 t1["avgt"] <- t1$throughput
+t1["propt"] <- t1$throughput/t1$load
 t2["avgt"] <- t2$throughput/2
+t2["propt"] <- t2$throughput/t2$load
 t4["avgt"] <- t4$throughput/4
+t4["propt"] <- t4$throughput/t4$load
 
 
 # Auxiliary functions.
@@ -260,3 +263,10 @@ Other threats to external validity relate to the application and load characteri
 Even though the no-op request handling can be useful to isolate web framework and
 runtime overhead, it might not be representative. Same applying to the step-function
 used to generate load, which does not consider impact of burst traffic, for instance.
+
+<!-- ## Moar Info -->
+<!-- ```{r propt_plot,  fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput / Load handled by the server given a certain load (1 vCPU)."} -->
+<!-- perf.plot(t1, "propt", "Throughput / Load") -->
+<!-- perf.plot(t2, "propt", "Throughput / Load") -->
+<!-- perf.plot(t4, "propt", "Throughput / Load") -->
+<!-- ``` -->
