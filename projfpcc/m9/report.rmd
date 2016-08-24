@@ -44,7 +44,8 @@ By running series of experiments, we found out that, with high statistical
 confidence, the average throughput per-core of the aforementioned service
 running on a virtual machine (VM) with 2 available cores is better than the
 same service running on a VM with 4 cores. We are well aware that these
-results ask for more investigation and answer those questions is definitely part of our future work.
+results ask for more investigation and answer those questions is definitely
+part of our future work.
 \end{abstract}
 
 # Introduction {#sec:intro}
