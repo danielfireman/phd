@@ -23,7 +23,7 @@ import com.sun.management.OperatingSystemMXBean;
 
 @SuppressWarnings("restriction")
 public class App extends Jooby {
-	private static final int LOG_INTERVA_SECS = 30; 
+	private static final int LOG_INTERVA_SECS = 5; 
 	{
 		use(new Jackson());
 
