@@ -11,6 +11,7 @@ source configrc
 EXECUTION_ID=$1
 ACTIVE_CLIENT=1
 
+echo "Packing client logs"
 for CLIENT in ${CLIENTS[@]};
 do
 	fname="c${NUM_CORES}_${EXECUTION_ID}_${ACTIVE_CLIENT}.zip"
@@ -22,3 +23,10 @@ do
 	fi
 	ACTIVE_CLIENT=`expr $ACTIVE_CLIENT + 1`
 done
+
+echo "Packing server logs"
+sfname="s${NUM_CORES}_${EXECUTION_ID}.zip"
+spath="~/phd/projfpcc/restserver/logs"
+ssh -i ~/fireman.sururu.key ubuntu@${SERVER_IP} "cd ${spath}; zip ${sfname} *.csv"
+scp -i ~/fireman.sururu.key ubuntu@${SERVER_IP}:${spath}/${sfname} ~/expresults_fpcc/
+scp ~/expresults_fpcc/${sfname} danielfireman@siri.lsd.ufcg.edu.br:/tmp/fireman_${sfname}
