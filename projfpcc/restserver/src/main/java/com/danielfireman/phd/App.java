@@ -23,6 +23,7 @@ import com.sun.management.OperatingSystemMXBean;
 
 @SuppressWarnings("restriction")
 public class App extends Jooby {
+	private static final int LOG_INTERVA_SECS = 30; 
 	{
 		use(new Jackson());
 
@@ -30,19 +31,20 @@ public class App extends Jooby {
 			startLogger();
 		});
 
+		String suffix = System.getenv("ROUND") != null ? "_"  + System.getenv("ROUND") : ""; 
 		use(new Metrics()
 				.request()
 				.threadDump()
-				.metric("memory", new MemoryUsageGaugeSet())
-				.metric("threads", new ThreadStatesGaugeSet())
-				.metric("gc", new GarbageCollectorMetricSet())
-				.metric("fs", new FileDescriptorRatioGauge())
+				.metric("memory" + suffix, new MemoryUsageGaugeSet())
+				.metric("threads" + suffix, new ThreadStatesGaugeSet())
+				.metric("gc" + suffix, new GarbageCollectorMetricSet())
+				.metric("fs" + suffix, new FileDescriptorRatioGauge())
 				.reporter(registry -> {
 					CsvReporter reporter = CsvReporter.forRegistry(registry)
 							.convertRatesTo(TimeUnit.SECONDS)
                             .convertDurationsTo(TimeUnit.MILLISECONDS)
                             .build(new File("logs/"));
-					reporter.start(30, TimeUnit.SECONDS);
+					reporter.start(LOG_INTERVA_SECS, TimeUnit.SECONDS);
 				    return reporter;
 				}));
 
@@ -82,7 +84,7 @@ public class App extends Jooby {
 						osBean.getProcessCpuLoad(),
 						osBean.getAvailableProcessors()));
 			}
-		}, 0, 10, TimeUnit.SECONDS);
+		}, 0, LOG_INTERVA_SECS, TimeUnit.SECONDS);
 	}
 
 	public static void main(final String[] args) throws Throwable {
