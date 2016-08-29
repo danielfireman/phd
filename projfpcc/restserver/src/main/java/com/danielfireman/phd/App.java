@@ -1,5 +1,6 @@
 package com.danielfireman.phd;
 
+import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -9,9 +10,15 @@ import java.util.concurrent.TimeUnit;
 import org.jooby.Jooby;
 import org.jooby.Results;
 import org.jooby.json.Jackson;
+import org.jooby.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.CsvReporter;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.sun.management.OperatingSystemMXBean;
 
 @SuppressWarnings("restriction")
@@ -22,6 +29,22 @@ public class App extends Jooby {
 		onStart(() -> {
 			startLogger();
 		});
+
+		use(new Metrics()
+				.request()
+				.threadDump()
+				.metric("memory", new MemoryUsageGaugeSet())
+				.metric("threads", new ThreadStatesGaugeSet())
+				.metric("gc", new GarbageCollectorMetricSet())
+				.metric("fs", new FileDescriptorRatioGauge())
+				.reporter(registry -> {
+					CsvReporter reporter = CsvReporter.forRegistry(registry)
+							.convertRatesTo(TimeUnit.SECONDS)
+                            .convertDurationsTo(TimeUnit.MILLISECONDS)
+                            .build(new File("logs/"));
+					reporter.start(30, TimeUnit.SECONDS);
+				    return reporter;
+				}));
 
 		get("/quit", () -> {
 			System.exit(0);

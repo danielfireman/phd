@@ -74,6 +74,13 @@
 			<artifactId>httpmime</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Metric collection -->
+		<dependency>
+		  <groupId>org.jooby</groupId>
+		  <artifactId>jooby-metrics</artifactId>
+		  <version>1.0.0.CR7</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<pluginManagement>
