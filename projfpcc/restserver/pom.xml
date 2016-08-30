@@ -81,6 +81,12 @@
 		  <artifactId>jooby-metrics</artifactId>
 		  <version>1.0.0.CR7</version>
 		</dependency>
+		
+		<dependency>
+		    <groupId>com.outr.javasysmon</groupId>
+		    <artifactId>javasysmon_2.10</artifactId>
+		    <version>0.3.4</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<pluginManagement>
