@@ -27,7 +27,7 @@ var (
 )
 
 const (
-	msgSuffix  = "/msg"
+	msgSuffix  = "/numprimes/100000"
 	quitSuffix = "/quit"
 )
 
