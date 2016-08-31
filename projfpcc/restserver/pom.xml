@@ -36,18 +36,6 @@
 			<artifactId>jooby-netty</artifactId>
 		</dependency>
 
-		<!-- Jackson -->
-		<dependency>
-			<groupId>org.jooby</groupId>
-			<artifactId>jooby-jackson</artifactId>
-		</dependency>
-
-		<!-- logging -->
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-		</dependency>
-
 		<!-- Tests -->
 		<dependency>
 			<groupId>junit</groupId>
