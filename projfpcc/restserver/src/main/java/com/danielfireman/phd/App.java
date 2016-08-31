@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.jooby.Jooby;
 import org.jooby.Results;
-import org.jooby.json.Jackson;
 import org.jooby.metrics.Metrics;
 
 import com.codahale.metrics.CsvReporter;
@@ -15,25 +14,18 @@ import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 
 public class App extends Jooby {
-	private static final int LOG_INTERVA_SECS = 5; 
+	private static final int LOG_INTERVA_SECS = 10;
 	{
-		use(new Jackson());
-		String suffix = System.getenv("ROUND") != null ? "_"  + System.getenv("ROUND") : ""; 
-		use(new Metrics()
-				.request()
-				.threadDump()
-				.metric("memory" + suffix, new MemoryUsageGaugeSet())
+		String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
+		use(new Metrics().request().threadDump().metric("memory" + suffix, new MemoryUsageGaugeSet())
 				.metric("threads" + suffix, new ThreadStatesGaugeSet())
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
-				.metric("fs" + suffix, new FileDescriptorRatioGauge())
-				.metric("cpu" + suffix, new CpuInfoGaugeSet())
+				.metric("fs" + suffix, new FileDescriptorRatioGauge()).metric("cpu" + suffix, new CpuInfoGaugeSet())
 				.reporter(registry -> {
-					CsvReporter reporter = CsvReporter.forRegistry(registry)
-							.convertRatesTo(TimeUnit.SECONDS)
-                            .convertDurationsTo(TimeUnit.MILLISECONDS)
-                            .build(new File("logs/"));
+					CsvReporter reporter = CsvReporter.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
+							.convertDurationsTo(TimeUnit.MILLISECONDS).build(new File("logs/"));
 					reporter.start(LOG_INTERVA_SECS, TimeUnit.SECONDS);
-				    return reporter;
+					return reporter;
 				}));
 
 		get("/quit", () -> {
@@ -41,10 +33,21 @@ public class App extends Jooby {
 			return Results.ok();
 		});
 
-		get("/msg", () -> {
-			Message msg = new Message();
-			msg.content = "My super big top ultra big content";
-			return Results.json(msg);
+		get("/numprimes/:max", (req) -> {
+			long startTime = System.currentTimeMillis();
+			long max = req.param("max").longValue();
+			long count = 0;
+			for (long i = 3; i <= max; i++) {
+				boolean isPrime = true;
+				for (long j = 2; j <= i / 2 && isPrime; j++) {
+					isPrime = i % j > 0;
+				}
+				if (isPrime) {
+					count++;
+				}
+			}
+			long elapsed = System.currentTimeMillis() - startTime;
+			return Results.ok(count + "," + elapsed);
 		});
 	}
 
