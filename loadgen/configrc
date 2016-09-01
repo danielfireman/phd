@@ -2,12 +2,12 @@ declare -a CLIENTS=('10.4.5.132' '10.4.5.130' '10.4.5.133' '10.4.5.134' '10.4.3.
 
 # export SERVER_IP=localhost # Localhost
 
-export SERVER_IP=10.4.5.216 # 2 Cores
-export NUM_CORES=2
-export NUM_CLIENTS=3
+#export SERVER_IP=10.4.5.216 # 2 Cores
+#export NUM_CORES=2
+#export NUM_CLIENTS=3
 
-#export SERVER_IP=10.4.5.226 # 4 Cores
-#export NUM_CORES=4
-#export NUM_CLIENTS=6
+export SERVER_IP=10.4.5.226 # 4 Cores
+export NUM_CORES=4
+export NUM_CLIENTS=6
 
 export SERVER="http://${SERVER_IP}:8080"  # 2 Cores
