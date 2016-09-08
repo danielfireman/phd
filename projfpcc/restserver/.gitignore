@@ -1,4 +1,7 @@
-/target/
-/logs/
+target/
+logs/
+restserver.iml
+.idea/
+
 
 ajcore*

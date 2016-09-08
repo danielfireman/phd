@@ -49,6 +49,12 @@ public class App extends Jooby {
 			long elapsed = System.currentTimeMillis() - startTime;
 			return Results.ok(count + "," + elapsed);
 		});
+
+		get("allocmem/:amount", (req) -> {
+            int arraySize = req.param("amount").intValue();
+            byte[] array = new byte[arraySize];
+            return Results.ok();
+		});
 	}
 
 	public static void main(final String[] args) throws Throwable {
