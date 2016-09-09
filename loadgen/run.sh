@@ -16,7 +16,9 @@ MAX_QPS=250
 
 for i in `seq 1 ${NUM_ROUNDS}`
 do
-#	sleep 1.5m
+    if [ "${NUM_ROUNDS}" -gt "1" ]; then
+	    sleep 1.5m
+	fi
 	./loadgen \
 --num_warmup_steps=${WARMUP_STEPS} \
 --initial_qps=${INITIAL_QPS} \
