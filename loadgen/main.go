@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -24,10 +25,10 @@ var (
 	clientAddr     = flag.String("addr", "http://10.4.2.103:8080", "Client HTTP address")
 	numWorkers     = flag.Int("workers", 32, "Client HTTP address")
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
+	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
 )
 
 const (
-	msgSuffix  = "/numprimes/5000"
 	quitSuffix = "/quit"
 )
 
@@ -36,6 +37,9 @@ var succs, errs, reqs uint64
 
 func main() {
 	flag.Parse()
+
+	suffixes := strings.Split(*msgSuffixes, ",")
+
 	if *initialQps <= 0 {
 		log.Fatalf("InitialQps must be positive.")
 	}
@@ -55,7 +59,7 @@ func main() {
 				DisableKeepAlives: true,
 			},
 		}
-		go worker(client, work)
+		go worker(client, work, suffixes)
 	}
 
 	qps := *initialQps
@@ -100,22 +104,24 @@ func main() {
 	}
 }
 
-func worker(client http.Client, work chan struct{}) {
-	url := *clientAddr + msgSuffix
-	for {
-		<-work
-		atomic.AddUint64(&reqs, 1)
-		resp, err := client.Get(url)
-		if err == nil {
-			if resp.StatusCode == 200 {
-				atomic.AddUint64(&succs, 1)
+func worker(client http.Client, work chan struct{}, suffixes []string) {
+	for _, suffix := range suffixes {
+		for {
+			<-work
+			atomic.AddUint64(&reqs, 1)
+			url := *clientAddr + suffix
+			resp, err := client.Get(url)
+			if err == nil {
+				if resp.StatusCode == 200 {
+					atomic.AddUint64(&succs, 1)
+				} else {
+					atomic.AddUint64(&errs, 1)
+				}
+				io.Copy(ioutil.Discard, resp.Body)
+				resp.Body.Close()
 			} else {
 				atomic.AddUint64(&errs, 1)
 			}
-			io.Copy(ioutil.Discard, resp.Body)
-			resp.Body.Close()
-		} else {
-			atomic.AddUint64(&errs, 1)
 		}
 	}
 }

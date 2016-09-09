@@ -1,3 +1,5 @@
 loadgen
 main
 logs/
+.idea/
+loadgen.iml
