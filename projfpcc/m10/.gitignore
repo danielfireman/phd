@@ -1,0 +1,4 @@
+results_cache
+*.html
+*_cache/
+*_files/

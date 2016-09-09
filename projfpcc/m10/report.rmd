@@ -1,0 +1,517 @@
+---
+documentclass: sigplanconf
+classoption:
+  - preprint
+  - numbers
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{graphicx}
+  - \usepackage{float}
+output:
+  pdf_document:
+    number_sections: true
+    latex_engine: pdflatex
+    keep_tex: true
+    template: null  # needed to make the use of sigplan documentclass.
+bibliography: bib.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+\title{Stretching Java™ HTTP Servers in the multi-core world}
+
+\authorinfo{}
+           {}
+           {}
+\maketitle
+
+\begin{abstract}
+Despite its importance, scalability of modern applications is poorly
+understood. On the one hand, applications business-logic and workload keep
+growing in complexity. On the other hand, fast-paced time-to-market and cloud
+computing platforms have contributed to popularize the usage of languages
+based on complex runtime systems, being Java \textsuperscript{TM} one of
+the most used.
+
+Because no two applications are alike or use the runtime in exactly the
+same fashion, there is no guarantee that any single set of parameters will be
+perfectly suited for every pair. This reality highlights how important it is
+to conduct focused performance evaluation and tunning at runtime level. 
+
+By running series of experiments, we found out that, with high statistical
+confidence, the average throughput per-core of the aforementioned service
+running on a virtual machine (VM) with 2 available cores is better than the
+same service running on a VM with 4 cores. We are well aware that these
+results ask for more investigation and answer those questions is definitely
+part of our future work.
+\end{abstract}
+
+# Introduction {#sec:intro}
+
+Web and other distributed software systems are increasingly being deployed to
+support key aspects of businesses including sales, customer relationship management
+(CRM), and data processing. Examples include: online shopping, processing insurance
+claims, and processing financial trades. As these businesses grow, the systems
+that support their functions also need to grow to support more users, process
+more data, or both. As they grow, it is important to maintain their performance
+(responsiveness or throughput), as it has direct impact on business objectives
+[Smith and Williams 2002]. 
+
+For example, the highest priority for nearly all retailers is to drive revenue
+and turn a profit. So, could the effect of not considering the performance of the
+website be really that detrimental? The answer is a bold yes. Some examples are:
+i) lost in revenue led by website failures or slow down during peak times or ii)
+funds drained from important projects due to patchwork solutions by adding more
+hardware and software [1]
+
+Yet, despite its importance, scalability of modern applications is poorly
+understood. On the one hand, we have applications business-logic and workload
+keep growing in complexity. On the other hand, fast-paced time-to-market and cloud
+computing platforms have contributed to popularize the usage of languages based
+on complex runtime systems, being Java \textsuperscript{TM} one the most used.
+
+In this context, JVM (Java Virtual Machine) comes with a set of default parameters,
+trying to provide adequate performance out of the box for the broadest range of
+application-execution resource pairs. However, because no two applications are
+alike or use the runtime in exactly the same fashion, there is no guarantee that
+any single set of parameters will be perfectly suited for every pair. This reality
+highlights how important is to conduct focused performance evaluation and tunning at runtime
+level. Classic modelling techniques do not consider runtime complexity [@DBLP:conf/cmg/WilliamsS04]
+and  automatic tunning [@DBLP:conf/ipps/JayasenaFRPP15] remains offline and time consuming.
+
+This paper presents a rather surprising result: with high probability, a highly-loaded
+no-op REST endpoint running on an asynchronous event-driven Java $\textsuperscript{TM}$
+HTTP server does not scaleup linearly (much worse than that). By running series of
+experiments, we found out that, with high statistical confidence, the
+average throughput per-core of the aforementioned service running on a virtual
+machine (VM) with 2 available cores is better than the same service running on a VM
+with 4 cores. We are well aware that these results ask for more investigation and
+answer those questions is definitely part of our future work.
+
+The remainder of the paper is structured into the following sections: Section \ref{sec:rel}
+reviews related work in the domain of web server modeling and Java \textsuperscript{TM} auto-tuning.
+Section \ref{sec:met} describes the experimental methodology and set up. Section
+\ref{sec:results} presents results obtained and possible threats to validity.
+Finally, in Section \ref{sec:conc}, we present concluding remarks and next steps.
+
+# Related Work {#sec:rel}
+
+Scalability is one of the most important quality attributes of today’s software
+systems. Yet, despite its importance, application's scalability is poorly
+understood. @DBLP:conf/cmg/WilliamsS04 reviewed four models of scalability -
+Linear scalability, Amdahl’s law, Super-Serial Model and Gustafson’s Law - and
+showed how they relate to Web and other distributed applications. The work also
+presents a pragmatic way of using well known models and regression to estimate
+capacity and find system bottlenecks but does not consider runtime systems as
+part of the complexity being modeled.
+
+As modeling a complex system such as JVM is very hard, approaches like JVM auto-tuning have
+been increasing in popularity. Performance optimization in the context of
+high-end programs that consume a lot of system resources is very important. 
+@DBLP:conf/ipps/JayasenaFRPP15 described HotSpot Auto-tuner, an offline, 
+automatic tuner that considers the entire JVM and the effect of all the flags.
+Even though it is general-purpose and could lead to quite nice gains in performance,
+Auto-tuner tunning process is very time consuming (200+ minutes). Another major
+drawback of this approach is its offline nature, as the system itself and its
+load characteristics are constantly changing (and have impact on tunning).
+
+We believe that better understanding the runtime system through  analytically modeling
+could be mixed with application trial runs to help to achieve a fast, online tunning.
+Furthermore it would allow predictions, which is very important on capacity
+planning. This work only scratches the surface by showing how the JVM could
+impact on the overall server speedup.
+
+# Methodology {#sec:met} 
+
+On the one hand performance has a direct and important impact on business
+objectives. On the other hand, every service has a unique set of
+requirements and often execute in resources which vary in vastly different
+ways. As an attempt to provide adequate performance out of the box for the
+broadest range of application-execution resource pairs, JVM
+(Java$\textsuperscript{TM}$ Virtual Machine) comes  with a set of default
+parameters.
+
+Our goal with this paper is to assess how the overhead that is
+not application-specific (i.e. HTTP request handling framework, JVM
+maintenance  tasks) impacts an asynchronous event-driven HTTP server that
+runs under high utilization.
+
+In other words, we would like to find which VM configuration leads to the
+greatest saturation point[^1]. To do so, clients [^2] collect one piece of data: the number of requests processed per second (throughput, $T$). Based on this information, we can calculate an indirect metric:
+
+[^1]: The saturation point tells that the service has reached its maximum capacity for the specific version (code), configuration and environment [@perfTestingWebSphere].
+
+[^2]: Code can be found at https://git.io/v6lCf.
+
+$$avgT(n_{vCPUs}) = \frac{T}{n_{vCPUs}}$$
+
+Where $avgT(n_{VCPUs})$ is the average throughput per available virtual CPU (VCPU), $n_{VCPUs}$ is the number of vCPUs available for execution and $T$ is the throughput. Based on the latter, we can formally express the experimental hypotheses:
+
+* $H_{0}$: The maximum throughput increases linearly with the increasing number of vCPUs allocated to run a highly-loaded single-endpoint REST service on an asynchronous event-driven Java™ HTTP server configured with default JVM flags. Or more formally:
+
+$$max(avgT(k)) \approx max(avgT(k+1)),\, \forall k > 0$$
+
+* $H_{1}$: The maximum throughput does not increase linearly with the increasing number of vCPUs 
+allocated to run a highly-loaded single-endpoint REST service on an asynchronous event-driven 
+Java $\textsuperscript{TM}$ HTTP server configured with default JVM flags. Or more formally:
+
+$$\exists k>0, \, max(avgT(k))\,\ne\, max(avgT(k+1))$$
+
+## Experimental Setup
+
+To achieve the experiment goal, the Java HTTP server business logic overhead was trimmed down. The request handling internals was handled by i) Netty [@Maurer:2015:NA:2838857], anasynchronous event-driven network application
+framework and ii) Jooby [@jooby], a micro web framework for Java, both without
+any custom parameters or configuration. The request handling logic was negligible, as well as the request and response payloads[^3]. The Java HotSpot Virtual Machine was used in all experiments.
+
+[^3]: Code can be found at https://git.io/v64D7.
+
+The load was impressed on the server using the monotonically increasing 
+step-function[@stepFun] described bellow. At every 10 seconds, the load was
+increased by:
+
+$$load(i) = i \cdot n_{vCPUs} \cdot 50, \, \forall x,y,\,\, x \leq y \implies load(x) \leq load(y)$$
+
+Where $i$ is the index of the current step. At the beginning of every experiment the server received a load of $n_{vCPUs} * 50$ QPS. This warm up phase aims at
+mitigate the impact of Java's Just In Time (JIT) compiler and other internal JVM
+mechanisms.
+
+We conducted a series of experiments varying the number of CPUs available
+at the virtual machine executing the server. Experiments were conducted using 1,
+2 and 4 vCPUs (named *Exp1*, *Exp2*, *Exp4*). Each experiment was repeated 10
+times. Table \ref{tab:expsetup} presents details of each experiment
+configuration.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+  Name & \#vCPUs & RAM(GB) & Disk(GB) \\ 
+  \hline\hline
+  Exp1 & 1 & 0.50 & 10.00 \rule{0pt}{3ex} \\ 
+  Exp2 & 2 & 4.00 & 60.00 \\ 
+  Exp4 & 4 & 8.00 & 90.00 \\ 
+\end{tabular}
+\caption{Experiment setup.} 
+\label{tab:expsetup}
+\end{table}
+
+As there is a negligible amount of serial work done at request handling (business
+logic), one trying to predict the server performance based on either 
+Amdahl’s Law (using $\sigma \approx 0$), Gustafson’s Law (using $\sigma'(1) \approx 0$)
+or Super-Serial Model (using $\sigma \approx 0$ and $\gamma \approx 0$) would
+expect a speedup very close to linear[@DBLP:conf/cmg/WilliamsS04].
+In other words, the degree of parallelism in the application is such that it could
+make (almost) full use of the additional resources provided by scaling.
+
+To our surprise, experimental results refute that hypothesis. These results are
+presented at next Section.
+
+<!--Each client output the number of requests successfully attended by the
+server per second during each step (throughput). The data was collected and processed to generate consolidated view of the troughput[^2].
+
+[^2]: Code can be found at https://git.io/v6lCf.
+
+The consolidated view has one entry per step, each entry contains:
+
+* Load: number of requests per second sent to the server during the step
+* Throughput: number requests successfully processed by the server per second
+during the step.
+
+Lastly the column $avgt$ is added. This column represents $avgT(n_{vCPUs})$ and it is calculated by dividing the throughput of each row by the number of available vCPUs available at the VM used to the run the HTTP server. The code used to calculate this and all other indirect metrics can be found [here](https://github.com./danielfireman/phd). -->
+
+# Experimental Results {#sec:results}
+
+```{r setup_results, include=FALSE}
+knitr::opts_knit$set(kable.force.latex = TRUE)
+knitr::opts_chunk$set(fig.pos = 'H')
+knitr::opts_chunk$set(fig.align = "center")
+
+require(ggplot2)
+require(dplyr)
+require(resample)
+require(cowplot)
+require(gridExtra)
+require(xtable)
+```
+
+```{r datasets, cache=TRUE}
+# Constants
+NUM_RESAMPLES <- 1000
+COLOR_BLIND_PALETTE <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+# Reading data;
+t1 <- read.csv("../data/1core/throughput.csv") %>%
+  select(-ts) %>%
+  filter(throughput != 0.0) %>%
+  na.omit()
+
+t2 <- read.csv("../data/2cores/throughput.csv") %>%
+  select(-ts) %>%
+  filter(throughput != 0.0) %>%
+  na.omit()
+
+t4 <- read.csv("../data/4cores/throughput.csv") %>%
+  select(-ts) %>%
+  filter(throughput != 0.0) %>%
+  na.omit()
+
+# Indirect Factors
+## Throughput per VCPU
+t1["avgt"] <- t1$throughput
+t1["propt"] <- t1$throughput/t1$load
+t2["avgt"] <- t2$throughput/2
+t2["propt"] <- t2$throughput/t2$load
+t4["avgt"] <- t4$throughput/4
+t4["propt"] <- t4$throughput/t4$load
+
+
+# Auxiliary functions.
+ci.data <- function(currLoad, data, col) {
+  d <- filter(data, load == currLoad)
+  b <- bootstrap(d[[col]], mean, R = NUM_RESAMPLES)
+  ci <- CI.percentile(b, probs = c(.005, .995))
+  return (data.frame(load=currLoad, mean=mean(ci), lower=ci[1], upper=ci[2]))
+}
+
+ci.data.frame <- function(data, col) {
+  loadList <- data$load %>% unique() %>% sort()
+  d <- data.frame(load = c(), upper = c(), mean = c(), lower = c())
+  for (currLoad in loadList) {
+    d <- rbind(d, ci.data(currLoad, data, col))
+  }
+  d <- arrange(d, desc(mean))
+  return(d)
+}
+
+perf.plot <- function(data, col, yTitle) {
+ ggplot(ci.data.frame(data, col), aes(x = load, y = mean)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width=.2, size=0.5, color = "darkblue")+
+  geom_point(size = 1, color = "black") +
+  geom_bar(stat="identity", fill="white", colour="darkgrey", alpha=0.1) +
+  ylab(yTitle) +
+  xlab("Load (Req/Sec)") +
+  scale_color_manual(values = COLOR_BLIND_PALETTE) +
+  theme(
+    text = element_text(size=8),
+    axis.text = element_text(size = 8))
+}
+```
+## Exp1: Running Server in a 1-vCPU VM
+
+<!-- The result set summary for *Exp1* is shown bellow: -->
+
+<!-- ```{r, t1_sum, comment=NA, results='asis'} -->
+<!-- # align param must have an extra col for the row.id, if it is the case. -->
+<!-- t1_aux <- t1 -->
+<!-- colnames(t1_aux) <- c("Load", "Throughput", "avgT") -->
+<!-- print.xtable(xtable(summary(t1_aux), caption = "Exp1 results summary.", align = "llll"), -->
+<!--              comment = FALSE, -->
+<!--              floating = TRUE, -->
+<!--              type = "latex", -->
+<!--              table.placement = "H", -->
+<!--              include.rownames=FALSE, -->
+<!--              hline.after = FALSE) -->
+<!-- ``` -->
+
+```{r t1_ci, cache=TRUE}
+ci.t1 <- ci.data.frame(t1, "throughput")
+
+max.troughput.t1 <- ci.t1 %>% filter(mean == max(ci.t1$mean))
+min.troughput.t1 <- ci.t1 %>% filter(mean == min(ci.t1$mean))
+```
+
+During this experiment, clients sent up to 1500 requests per second (RPS).
+For this particular experiment, throughput (T) and average throughput (avgT) are
+equal because the virtual machine used to run the server has only one vCPU. 
+
+Figure \ref{fig:t1_plot} presents the summary results of this experiment. 
+Error bars throughout this article indicate a 95\% confident interval for the mean.
+The confidence interval was computed using Bootstrap re-sampling (simulation-based
+statistical estimation technique [@efron1994introduction]) with 10,000 trials
+because distributions were non-normal.
+
+We could see a pretty much linear server throughput increase until
+`r round(max.troughput.t1$mean, 2)` RPS, at which point it is being impressed 
+a load of `r max.troughput.t1$load` RPS. That is the saturation point and at this
+point the server is operating at its full capacity.
+
+```{r t1_plot,  fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (1 vCPU)."}
+perf.plot(t1, "throughput", "T (Req/Sec)")
+```
+
+After the saturation point the server is overloaded and as the load increases 
+(simulating clients in a e-commerce website, for instance), the only
+effect is the growth of the server's accept queue [@Banga:1999:MCW:598682.598725].
+At some point requests are going to start to timeout and fail, leading to a decrease in throughput. Besides that, the runtime itself starts neededing more
+bookkeeping, for instance, more stop-of-the-world pauses [@995163] happen and 
+more CPU is consumed by the garbage collector.
+
+We believe all these reasons could explain:
+
+* Steep decrease in the throughput: there is more and more competition for the
+only vCPU available
+* Increase in the size of the error bars: due to the unpredictability nature of
+the GC and other runtime components leads to a great variance in the system performance
+
+To better understand how these factors correlate is part our future plans. Finally, at the very end (`r min.troughput.t1$load` load) we have a practically inoperative server, successfully answering `r round(min.troughput.t1$mean, 2)` RPS
+
+## Exp2: Running Server in a 2-vCPUs VM
+
+```{r cit2_data, cache=TRUE}
+ci.t2 <- ci.data.frame(t2, "throughput")
+ci.t2.avgt <- ci.data.frame(t2, "avgt")
+max.troughput.t2 <- ci.t2 %>% filter(mean == max(ci.t2$mean))
+min.troughput.t2 <- ci.t2 %>% filter(load == 3000)
+```
+
+During this experiment, the HTTP server was running in a virtual machine with 2 vCPUs.
+Again, jumping straight to the throughput distribution plot, which is presented
+in Figure \fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (2 vCPUsref{fig:t2_plot}, one could notice is the double size of vertical
+axis when compared to *Exp1* (\ref{fig:t1_plot}).
+
+At this time, the server reaches saturation at `r max.troughput.t2$load`
+RPS, handling `r round(max.troughput.t2$mean, 2)` requests per second on average.
+In other words, our expectations were confirmed: doubling the amount of resources
+from 1 to 2 vCPUs almost doubles the throughput (precisely  `r round(max.troughput.t2$mean/max.troughput.t1$mean, 2)`).
+
+```{r t2_plot, warning=F,  fig.align="center", fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (2 vCPUs)."}
+perf.plot(t2, "throughput", "T (Req/Sec)")
+```
+
+On the other extreme, at the right-hand side of the chart we see a stabilization
+trend around `r round(min.troughput.t2$mean, 0)` RPS We need more experiments to
+increase our confidence, but it seems that adding the extra core increases the
+chance to the system to keep operating - even if in a very inefficient way.
+
+Finally, the shape of the curve is also very similar to Figure \ref{fig:t1_plot} and we
+believe the steep decrease after saturation point and the size of the error bars
+are due to the same reasons described in *Exp1*. Figure \ref{fig:t1t2_plot} compares
+average throughput per core observed in *Exp1* and *Exp2*:
+
+```{r t1t2_plot,  echo=FALSE, fig.align="center", fig.pos="H",fig.height=2, fig.width=3.5, fig.cap="Comparing Exp1 and Exp2 avgT. Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling."}
+ ggplot() +
+  geom_point(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), size = 2) +
+  geom_line(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), alpha=0.2, color = "darkgrey") +
+  geom_errorbar(data=ci.t1, aes(x=load, ymin = lower, ymax = upper, color="1 vCPU"), width=.2, size=0.5)+
+  geom_point(data=ci.t2.avgt, aes(x=load/2, y=mean, color="2 vCPUs"), size = 2) +
+  geom_line(data=ci.t2.avgt, aes(x=load/2, y=mean, color="2 vCPUs"), alpha=0.1) +
+  geom_errorbar(data=ci.t2.avgt, aes(x=load/2, ymin = lower, ymax = upper, color="2 vCPUs"), width=.2, size=0.5)+
+  ylab("avgT (Req/Sec)") +
+  xlab("Average Load per vCPU (Req/Sec)") +
+  scale_color_manual(values = COLOR_BLIND_PALETTE) +
+  guides(colour=guide_legend(title=NULL)) +
+  theme(
+    text = element_text(size=8),
+    legend.position = c(0.15, 0.9),
+    axis.text = element_text(size = 8))
+```
+
+To be in pair with the averaged throughput, we averaged the load per vCPU as well.
+As one can see the, there is no statistical evidence of difference in the curves,
+which confirms our prior analysis.
+
+## Exp4: Running Server in a 4-vCPUs VM
+
+```{r cache=TRUE}
+ci.t4 <- ci.data.frame(t4, "throughput")
+ci.t4.avgt <- ci.data.frame(t4, "avgt")
+max.troughput.t4 <- ci.t4 %>% filter(mean == max(ci.t4$mean))
+```
+
+In this case we have the HTTP server running in a virtual machine with 4 vCPUs.
+To our surprise, the maximum throughput handled by the server was only 
+`r round(max.troughput.t4$mean, 2)` RPS. The peak throughput was reached under a 
+load of `r round(max.troughput.t4$load, 2)` RPS. Figure \ref{fig:t4_plot} shows
+distribution chart:
+
+```{r t4_plot,  fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Throughput handled by the server given a certain load (4 vCPUs). Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling."}
+perf.plot(t4, "throughput", "T (Req/Sec)")
+```
+
+The first thing that calls out our attention is the bi-modal shape of the
+distribution.  That could be due to many reasons and investigating those
+reasons is definitely in our future work.
+
+Figure \ref{fig:t4avgt_plot} summarizes experimental results by comparing the
+average throughput versus average load per core in all cases. It provides us
+with visual evidence to refute the null hypothesis, as the average throughput of
+*Exp4* is far more worse than the other two cases. 
+
+```{r t4avgt_plot,  fig.align="center", fig.pos="H", fig.height=2, fig.width=3.5, fig.cap="Comparing average troughput from servers running at VMs with 1, 2 and 4 vCPUs available. Error bars indicate a 95\\% confident interval for the mean computed using Bootstrap resampling.", cache=TRUE}
+ ggplot() +
+  geom_point(data=ci.t1, aes(x=load, y=mean, color="1 vCPU"), size = 2) +
+  geom_errorbar(data=ci.t1, aes(x=load, ymin = lower, ymax = upper, color="1 vCPU"), width=.2, size=0.5)+
+  geom_point(data=ci.t2.avgt, aes(x=load/2, y=mean, color="2 vCPUs"), size = 2) +
+  geom_errorbar(data=ci.t2.avgt, aes(x=load/2, ymin = lower, ymax = upper, color="1 vCPU"), width=.2, size=0.5)+
+  geom_point(data=ci.t4.avgt, aes(x=load/4, y=mean, color="4 vCPUs"), size = 2) +
+  geom_errorbar(data=ci.t4.avgt, aes(x=load/4, ymin = lower, ymax = upper, color="4 vCPUs"), width=.2, size=0.5)+
+  ylab("avgT (Req/Sec)") +
+  xlab("Average Load per vCPU (Req/Sec)") +
+  scale_color_manual(values = COLOR_BLIND_PALETTE) +
+  guides(colour=guide_legend(title=NULL)) +
+  theme(
+    text = element_text(size=8),
+    legend.position = c(0.15, 0.9),
+    axis.text = element_text(size = 8))
+```
+
+```{r t2t4diffpvalue, echo=FALSE, cache=TRUE}
+boot_diff <- bootstrap2(
+  data=t4$avgt,
+  data2=t2$avgt,
+  statistic = mean,
+  R = NUM_RESAMPLES)
+ci.t2.t4.diff <- CI.percentile(boot_diff, probs = c(.005, .995))
+```
+
+To formally verify that, we calculated the 95\% confident interval for mean 
+throughput difference (*Exp4-Exp2*). We found that, with high probability, the 
+mean difference is between `r round(ci.t2.t4.diff[1,1], 2)` and 
+`r round(ci.t2.t4.diff[1,2], 2)` QPS. That result gives us enough confidence to
+reject our null hypotheses, as running a highly-loaded
+single-endpoint REST  service on an asynchronous event-driven Java
+$\textsuperscript{TM}$  HTTP server  configured with default JVM flags in a 4
+vCPUs' VM leads to a worse average  throughput than 2 vCPUs.
+
+## Threats to Validity
+
+Even though JVM is multi-platform, performance differences might arise when
+changing from one platform to the other. This work used only 64-bit Linux-based
+virtual machines. We also performed experiments only using Java HotSpot Virtual
+Machine
+
+Other threats to external validity relate to the application and load characteristics.
+Even though the no-op request handling can be useful to isolate web framework and
+runtime overhead, it might not be representative. Same applying to the step-function
+used to generate load, which does not consider impact of burst traffic, for instance.
+
+<!-- ## Moar Info -->
+<!-- ```{r propt_plot,  fig.align="center", fig.pos="h", fig.height=2, fig.width=3.5, fig.cap="Throughput / Load handled by the server given a certain load (1 vCPU)."} -->
+<!-- perf.plot(t1, "propt", "Throughput / Load") -->
+<!-- perf.plot(t2, "propt", "Throughput / Load") -->
+<!-- perf.plot(t4, "propt", "Throughput / Load") -->
+<!-- ``` -->
+
+# Conclusions and Next Steps {#sec:conc}
+
+This paper presents a rather surprising result: with high probability, a highly-loaded
+no-op REST endpoint running on an asynchronous event-driven Java $\textsuperscript{TM}$
+HTTP server does not scaleup linearly (much worse than that). 
+
+By running series of experiments, we have found that, with high statistical confidence, the
+average throughput per-core of the aforementioned service running on a virtual
+machine (VM) with 2 available cores is better than the same service running on a VM
+with 4 cores. 
+
+Our experiments also showed that, when running in VMs with one and two cores 
+available, the server throughput decreases steeply after saturation. We believe
+this is because the JVM increases the competition for CPU to execute internal
+mechanisms such as garbage collection. This also reflects in a much bigger
+variance in the server performance.
+
+Finally, another interesting result was that, when running in a VM with 4 cores, the
+server has a multi-modal distribution of the throughput. Understand this further
+is the bulk of our future work.
+
+# References {#references}
