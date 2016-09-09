@@ -20,10 +20,13 @@ public class App extends Jooby {
 		use(new Metrics().request().threadDump().metric("memory" + suffix, new MemoryUsageGaugeSet())
 				.metric("threads" + suffix, new ThreadStatesGaugeSet())
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
-				.metric("fs" + suffix, new FileDescriptorRatioGauge()).metric("cpu" + suffix, new CpuInfoGaugeSet())
+				.metric("fs" + suffix, new FileDescriptorRatioGauge())
+				.metric("cpu" + suffix, new CpuInfoGaugeSet())
 				.reporter(registry -> {
-					CsvReporter reporter = CsvReporter.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
-							.convertDurationsTo(TimeUnit.MILLISECONDS).build(new File("logs/"));
+					CsvReporter reporter = CsvReporter.forRegistry(registry)
+                            .convertRatesTo(TimeUnit.SECONDS)
+							.convertDurationsTo(TimeUnit.MILLISECONDS)
+                            .build(new File("logs/"));
 					reporter.start(LOG_INTERVA_SECS, TimeUnit.SECONDS);
 					return reporter;
 				}));
@@ -50,7 +53,7 @@ public class App extends Jooby {
 			return Results.ok(count + "," + elapsed);
 		});
 
-		get("allocmem/:amount", (req) -> {
+		get("/allocmem/:amount", (req) -> {
             int arraySize = req.param("amount").intValue();
             byte[] array = new byte[arraySize];
             return Results.ok();
