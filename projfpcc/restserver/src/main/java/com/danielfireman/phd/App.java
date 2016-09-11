@@ -18,6 +18,7 @@ public class App extends Jooby {
 	{
 		String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
 		use(new Metrics().request().threadDump().metric("memory" + suffix, new MemoryUsageGaugeSet())
+				.request()
 				.metric("threads" + suffix, new ThreadStatesGaugeSet())
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
 				.metric("fs" + suffix, new FileDescriptorRatioGauge())
