@@ -16,7 +16,7 @@ export NUM_CLIENTS=3
 # Request suffix.
 # export SUFFIXES="/numprimes/5000"  # CPU intensive
 #export SUFFIXES="/allocmem/524288"  # Memory intensive (512KB per request)
-export SUFFIXES="/allocmem/1048576"  # Memory intensive (1MB per request)
+export SUFFIXES="/allocmem/1048576,/allocmem/524288"  # Memory intensive (1MB per request)
 
 # SERVER passed down the road. Do not touch.
 export SERVER="http://${SERVER_IP}:8080"  # 2 Cores
