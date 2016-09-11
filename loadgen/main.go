@@ -105,8 +105,8 @@ func main() {
 }
 
 func worker(client http.Client, work chan struct{}, suffixes []string) {
-	for _, suffix := range suffixes {
-		for {
+	for {
+		for _, suffix := range suffixes {
 			<-work
 			atomic.AddUint64(&reqs, 1)
 			url := *clientAddr + suffix
