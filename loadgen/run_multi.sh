@@ -8,7 +8,8 @@ ACTIVE_CLIENT=1
 
 for CLIENT in ${CLIENTS[@]};
 do
-	ssh -i ~/fireman.sururu.key ubuntu@${CLIENT} "cd ~/phd/loadgen;./run.sh ${ACTIVE_CLIENT} ${NUM_ROUNDS}" &
+	port=$(getport ${CLIENT})
+	ssh -i ~/fireman.sururu.key ${SSH_ADDR} -p ${port} cd ~/phd/loadgen;./run.sh ${ACTIVE_CLIENT} ${NUM_ROUNDS} &
 	if [ $ACTIVE_CLIENT == $NUM_CLIENTS ]; then
 		break
 	fi

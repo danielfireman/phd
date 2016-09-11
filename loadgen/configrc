@@ -16,7 +16,24 @@ export NUM_CLIENTS=3
 # Request suffix.
 # export SUFFIXES="/numprimes/5000"  # CPU intensive
 export SUFFIXES="/allocmem/524288"  # Memory intensive (512KB per request)
-export SUFFIXES="/allocmem/1048576"  # Memory intensive (1MB per request)
+#export SUFFIXES="/allocmem/1048576"  # Memory intensive (1MB per request)
 
 # SERVER passed down the road. Do not touch.
 export SERVER="http://${SERVER_IP}:8080"  # 2 Cores
+
+SSH_ADDR=ubuntu@ssh.cloud.lsd.ufcg.edu.br
+
+function getport {
+	local res=""
+	res+=`echo $1 | cut -d. -f2`
+	res+=`echo $1 | cut -d. -f3`
+	# Check if the last part has only two numbers. In this case
+	# we should add 0 as preffix.
+	last=`echo $1 | cut -d. -f4`
+	len=${#last}
+	if [ "$len" -eq "2" ]; then
+		res+="0"
+	fi
+	res+=$last
+	echo $res
+}
