@@ -1,5 +1,8 @@
 #!/bin/bash
+
 set -x
+source configrc
+
 killall loadgen
 rm logs/*
 
