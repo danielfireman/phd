@@ -59,6 +59,14 @@ public class App extends Jooby {
             byte[] array = new byte[arraySize];
             return Results.ok();
 		});
+
+		get("/allocandhold/:amount/:millis", (req) -> {
+			int arraySize = req.param("amount").intValue();
+			int millis = req.param("millis").intValue();
+			byte[] array = new byte[arraySize];
+			Thread.sleep(millis);
+			return Results.ok();
+		});
 	}
 
 	public static void main(final String[] args) throws Throwable {
