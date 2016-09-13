@@ -76,11 +76,28 @@ getGcCpuData <- function(nCores, id) {
   return(gc_cpu)
 }
 
+getProcData <- function(nCores, id) {
+  p <- paste(gsub("nCores_", nCores, "../data/nCores_cores/server/process_"), id, sep = "")
+  t <- read.csv(paste(p, ".kernel.time.csv", sep = ""))
+  u <- read.csv(paste(p, ".user.time.csv", sep = ""))
+  # convert from nanosecs to millisecs
+  t["value"] <- t$value / 1000
+  u["value"] <- u$value / 1000
+  # It is cumulative, we would like to work with an instantaneous version
+  #t$value <- c(NA, t[2:nrow(t), 2] - t[1:(nrow(t)-1), 2])
+  #u$value <- c(NA, u[2:nrow(t), 2] - u[1:(nrow(t)-1), 2])
+  t <- merge(t, u, by = "t")
+  colnames(t) <- c("t", "proc.kernel.time", "proc.user.time")
+  t["total.time"] <- t$proc.kernel.time + t$proc.user.time
+  return(t)
+}
+
 plotMem <- function(df, yLab) {
+  startTime <- df$t[1]
   print(ggplot(size = 1) +
-          geom_line(data = df, aes(x = t/ 1000, y = commited / 1000000, color="Commited")) +
-          geom_line(data = df, aes(x = t/ 1000, y = used / 1000000, color="Used")) +
-          geom_line(data = df, aes(x = t/ 1000, y = max / 1000000, color="Max")) +
+          geom_line(data = df, aes(x = t-startTime, y = commited / 1000000, color="Commited")) +
+          geom_line(data = df, aes(x = t-startTime, y = used / 1000000, color="Used")) +
+          geom_line(data = df, aes(x = t-startTime, y = max / 1000000, color="Max")) +
           ylab(yLab) +
           xlab("Time (s)") +
           scale_color_manual(values = COLOR_BLIND_PALETTE) +
@@ -91,13 +108,33 @@ plotMem <- function(df, yLab) {
             axis.text = element_text(size = 8)))
 }
 
-plotThreads <- function(df) {
+plotMemPools <- function(oldGen, eden, survivor, metaspace, cache, compClass) {
+  startTime <- oldGen$t[1]
   print(ggplot(size = 1) +
-          geom_line(data = threads, aes(x = t/ 1000, y = all, color = "all")) +
-          geom_line(data = threads, aes(x = t/ 1000, y = timed_waiting, color = "timed waiting")) +
-          geom_line(data = threads, aes(x = t/ 1000, y = waiting, color = "waiting")) +
-          geom_line(data = threads, aes(x = t/ 1000, y = blocked, color = "blocked")) +
-          geom_line(data = threads, aes(x = t/ 1000, y = runnable, color = "runnable")) +
+          geom_line(data = oldGen, aes(x = t-startTime, y = used /1000000, color="OldGem")) +
+          geom_line(data = eden, aes(x = t-startTime, y = used /1000000, color="Eden")) +
+          geom_line(data = survivor, aes(x = t-startTime, y = used /1000000, color="Survivor")) +
+          geom_line(data = metaspace, aes(x = t-startTime, y = used /1000000, color="Metaspace")) +
+          geom_line(data = cache, aes(x = t-startTime, y = used /1000000, color="Code Cache")) +
+          geom_line(data = compClass, aes(x = t-startTime, y = used /1000000, color="Compressed class")) +
+          ylab("Used Memory (MB)") +
+          xlab("Time (s)") +
+          scale_color_manual(values = COLOR_BLIND_PALETTE) +
+          theme(
+            legend.title=element_blank(),
+            legend.position = c(0.13, 0.8),
+            text = element_text(size=8),
+            axis.text = element_text(size = 8)))
+}
+
+plotThreads <- function(df) {
+  startTime <- df$t[1]
+  print(ggplot(df, size = 1) +
+          geom_line(aes(x = t-startTime, y = all, color = "all")) +
+          geom_line(aes(x = t-startTime, y = timed_waiting, color = "timed waiting")) +
+          geom_line(aes(x = t-startTime, y = waiting, color = "waiting")) +
+          geom_line(aes(x = t-startTime, y = blocked, color = "blocked")) +
+          geom_line(aes(x = t-startTime, y = runnable, color = "runnable")) +
           ylab("Count") +
           xlab("Time (s)") +
           scale_color_manual(values = COLOR_BLIND_PALETTE) +
@@ -109,9 +146,16 @@ plotThreads <- function(df) {
 }
 
 plotThroughput <- function(df) {
+  t75 <- df %>% filter(mean_rate >= max(df$mean_rate) * 0.75) %>% head(n = 1)
+  t85 <- df %>% filter(mean_rate >= max(df$mean_rate) * 0.85) %>% head(n = 1)
+  t95 <- df %>% filter(mean_rate >= max(df$mean_rate) * 0.95) %>% head(n = 1)
+  startTime <- df$t[1]
   print(
-    ggplot(size = 1) +
-      geom_line(data = df, aes(x = t/ 1000, y = mean_rate, color = "throughput")) +
+    ggplot(df, size = 1, aes(x = t-startTime, y = mean_rate)) +
+      geom_line() +
+      geom_vline(xintercept = t75$t-startTime, color = "blue") +
+      geom_vline(xintercept = t85$t-startTime, color = "blue") +
+      geom_vline(xintercept = t95$t-startTime, color = "blue") +
       ylab("Throughput (Req/Sec)") +
       xlab("Time (s)") +
       scale_color_manual(values = COLOR_BLIND_PALETTE) +
@@ -123,17 +167,22 @@ plotThroughput <- function(df) {
   )
 }
 
-
 plotResponseTime <- function(df) {
+  startTime <- df$t[1]
   print(
-    ggplot(size = 1) +
-      geom_line(data = df, aes(x = t/ 1000, y = mean, color = "response time")) +
+    ggplot(df, size = 1) +
+      geom_line(aes(x = t-startTime, y = max, color = "Max")) +
+      geom_line(aes(x = t-startTime, y = min, color = "Min")) +
+      geom_line(aes(x = t-startTime, y = mean, color = "Mean")) +
+      geom_line(aes(x = t-startTime, y = p50, color = "50%til")) +
+      geom_line(aes(x = t-startTime, y = p95, color = "95%til")) +
+      geom_line(aes(x = t-startTime, y = p99, color = "99%til")) +
       ylab("Response Time (ms)") +
       xlab("Time (s)") +
       scale_color_manual(values = COLOR_BLIND_PALETTE) +
       theme(
         legend.title=element_blank(),
-        legend.position = c(0.1, 0.9),
+        legend.position = c(0.05, 0.6),
         text = element_text(size=8),
         axis.text = element_text(size = 8))
   )
