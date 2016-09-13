@@ -26,6 +26,7 @@ var (
 	numWorkers     = flag.Int("workers", 32, "Client HTTP address")
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
+	keepTime       = flag.Duration("keep_time", 0*time.Millisecond, "Time without increasing QPS after max.")
 )
 
 const (
@@ -90,6 +91,7 @@ func main() {
 		}()
 
 		if qps >= *maxQPS {
+			time.Sleep(*keepTime)
 			close(work)
 			resp, err := http.Get(*clientAddr + quitSuffix)
 			if err == nil {
