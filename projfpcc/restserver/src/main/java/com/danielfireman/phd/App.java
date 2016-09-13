@@ -23,7 +23,7 @@ public class App extends Jooby {
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
 				.metric("fs" + suffix, new FileDescriptorRatioGauge())
 				.metric("cpu" + suffix, new CpuInfoGaugeSet())
-				.metric("process" + suffix, new ProcessInfoGaugeSet())
+				//.metric("process" + suffix, new ProcessInfoGaugeSet())
 				.reporter(registry -> {
 					CsvReporter reporter = CsvReporter.forRegistry(registry)
                             .convertRatesTo(TimeUnit.SECONDS)
