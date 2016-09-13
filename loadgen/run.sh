@@ -1,21 +1,18 @@
 #!/bin/bash
 
 set -x
-source configrc
 
-killall loadgen
 rm logs/*
 
 # This order must be in sync with run_multi.sh
 CLIENT_ID=$1
 NUM_ROUNDS=$2
-
-WARMUP_STEPS=2
-TIMEOUT=100ms
-STEP_DURATION=5s
-INITIAL_QPS=10
-STEP_SIZE=5
-MAX_QPS=500
+WARMUP_STEPS=$3
+TIMEOUT=$4
+STEP_DURATION=$5
+INITIAL_QPS=$6
+STEP_SIZE=$7
+MAX_QPS=$8
 
 for i in `seq 1 ${NUM_ROUNDS}`
 do

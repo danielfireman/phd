@@ -1,5 +1,12 @@
 declare -a CLIENTS=('10.4.5.132' '10.4.5.130' '10.4.5.133' '10.4.5.134' '10.4.3.37' '10.4.5.216')
 
+WARMUP_STEPS=2
+TIMEOUT=100ms
+STEP_DURATION=5s
+INITIAL_QPS=10
+STEP_SIZE=5
+MAX_QPS=500
+
 # Server IP. Need to set NUM_CLIENTS and NUM_CORES
 # export SERVER_IP=localhost # Localhost
 # export NUM_CORES=1
