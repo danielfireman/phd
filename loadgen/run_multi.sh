@@ -19,7 +19,9 @@ do
     ${STEP_DURATION} \
     ${INITIAL_QPS} \
     ${STEP_SIZE} \
-    ${MAX_QPS}" &
+    ${MAX_QPS} \
+    ${SUFFIXES} \
+    ${SERVER}" &
 	if [ $ACTIVE_CLIENT == $NUM_CLIENTS ]; then
 		break
 	fi
