@@ -22,8 +22,8 @@ do
     ${MAX_QPS} \
     ${SUFFIXES} \
     ${SERVER}" &
-	if [ $ACTIVE_CLIENT == $NUM_CLIENTS ]; then
+	if [ ${ACTIVE_CLIENT} == ${NUM_CLIENTS} ]; then
 		break
 	fi
-	ACTIVE_CLIENT=`expr $ACTIVE_CLIENT + 1`
+	ACTIVE_CLIENT=`expr ${ACTIVE_CLIENT} + 1`
 done

@@ -14,7 +14,7 @@ INITIAL_QPS=$6
 STEP_SIZE=$7
 MAX_QPS=$8
 SUFFIXES=$9
-SERVER=$10
+SERVER=${10}
 
 for i in `seq 1 ${NUM_ROUNDS}`
 do
