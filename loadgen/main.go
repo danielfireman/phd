@@ -1,5 +1,12 @@
 package main
 
+// Examples of simple and quick running (for testing):
+//
+// To try out keep_duration flag.
+// go run main.go --initial_qps=1 --step_duration=1s --step_size=1 --max_qps=2 \
+// --num_warmup_steps=1 --timeout=100ms --workers=1 --addr=http://localhost:8080 \
+// --cpus=1 --keep_duration=30s
+
 import (
 	"flag"
 	"fmt"
@@ -26,7 +33,7 @@ var (
 	numWorkers     = flag.Int("workers", 32, "Client HTTP address")
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
-	keepTime       = flag.Duration("keep_time", 0*time.Millisecond, "Time without increasing QPS after max.")
+	keepDuration   = flag.Duration("keep_duration", 0*time.Millisecond, "Time without increasing QPS after max.")
 )
 
 const (
@@ -64,8 +71,9 @@ func main() {
 	}
 
 	qps := *initialQps
-	fmt.Printf("qps,totalReq,succReq,errReq,throughput\n")
+	fmt.Printf("ts,qps,totalReq,succReq,errReq,throughput\n")
 	numSteps := 0
+	var increaseLoadFinishTime time.Time
 	for {
 		step := time.Tick(*stepDuration)
 		t := time.Tick(time.Duration(float64(1e9)/float64(qps)) * time.Nanosecond)
@@ -91,17 +99,22 @@ func main() {
 		}()
 
 		if qps >= *maxQPS {
-			time.Sleep(*keepTime)
-			close(work)
-			resp, err := http.Get(*clientAddr + quitSuffix)
-			if err == nil {
-				io.Copy(ioutil.Discard, resp.Body)
+			if increaseLoadFinishTime.Nanosecond() == 0 {
+				increaseLoadFinishTime = time.Now()
 			}
-			return
-		}
-		numSteps++
-		if numSteps >= *numWarmupSteps {
-			qps += *stepSize
+			if increaseLoadFinishTime.Add(*keepDuration).Before(time.Now()) {
+				close(work)
+				resp, err := http.Get(*clientAddr + quitSuffix)
+				if err == nil {
+					io.Copy(ioutil.Discard, resp.Body)
+				}
+				return
+			}
+		} else {
+			numSteps++
+			if numSteps >= *numWarmupSteps {
+				qps += *stepSize
+			}
 		}
 	}
 }

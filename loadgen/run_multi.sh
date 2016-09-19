@@ -21,6 +21,7 @@ do
     ${STEP_SIZE} \
     ${MAX_QPS} \
     ${SUFFIXES} \
+    ${KEEP_DURATION} \
     ${SERVER}" &
 	if [ ${ACTIVE_CLIENT} == ${NUM_CLIENTS} ]; then
 		break

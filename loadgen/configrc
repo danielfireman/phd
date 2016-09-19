@@ -9,13 +9,13 @@ declare -a CLIENTS=('10.4.5.132' '10.4.5.130' '10.4.5.133' '10.4.5.134' '10.4.3.
 # MAX_QPS=500
 
 # Server IP. Need to set NUM_CLIENTS and NUM_CORES
-# export SERVER_IP=localhost # Localhost
-# export NUM_CORES=1
-# export NUM_CLIENTS=1
+export SERVER_IP=localhost # Localhost
+export NUM_CORES=1
+export NUM_CLIENTS=1
 
-export SERVER_IP=10.4.5.216 # 2 Cores
-export NUM_CORES=2
-export NUM_CLIENTS=3
+# export SERVER_IP=10.4.5.216 # 2 Cores
+# export NUM_CORES=2
+# export NUM_CLIENTS=3
 
 # export SERVER_IP=10.4.5.226 # 4 Cores
 # export NUM_CORES=4
@@ -23,15 +23,16 @@ export NUM_CLIENTS=3
 
 export WARMUP_STEPS=2
 export TIMEOUT=100ms
-export STEP_DURATION=10s  # Baseline 5s
+export STEP_DURATION=5s  # Baseline 5s
 export INITIAL_QPS=10
 export STEP_SIZE=5
-export MAX_QPS=250  # Baseline 500
-export SUFFIXES="/allocmem/1048576"  # Memory intensive (1MB per request)
+export MAX_QPS=500  # Baseline 500
+export SUFFIXES="/numprimes/5000"  # CPU intensive
+export KEEP_DURATION=0s
 
 # Request suffix.
-# export SUFFIXES="/numprimes/5000"  # CPU intensive
 # export SUFFIXES="/allocmem/524288"  # Memory intensive (512KB per request)
+# export SUFFIXES="/allocmem/1048576"  # Memory intensive (1MB per request)
 # export SUFFIXES="/allocmem/10485760"  # Memory intensive (10MB per request)
 # export SUFFIXES="/allocmem/157286400"  # Memory intensive (15MB per request)
 # export SUFFIXES="/allocmem/20971520"  # Memory intensive (20MB per request)

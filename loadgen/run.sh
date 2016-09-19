@@ -14,7 +14,8 @@ INITIAL_QPS=$6
 STEP_SIZE=$7
 MAX_QPS=$8
 SUFFIXES=$9
-SERVER=${10}
+KEEP_DURATION=${10}
+SERVER=${11}
 
 for i in `seq 1 ${NUM_ROUNDS}`
 do
@@ -29,5 +30,6 @@ do
 --step_duration=${STEP_DURATION} \
 --max_qps=${MAX_QPS} \
 --msg_suffixes=${SUFFIXES} \
+--keep_duration=${KEEP_DURATION} \
 --addr=${SERVER} > logs/client_${i}_${CLIENT_ID}
 done
