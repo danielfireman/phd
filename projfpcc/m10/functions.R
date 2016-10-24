@@ -171,8 +171,6 @@ plotResponseTime <- function(df) {
   startTime <- df$t[1]
   print(
     ggplot(df, size = 1) +
-      geom_line(aes(x = t-startTime, y = max, color = "Max")) +
-      geom_line(aes(x = t-startTime, y = min, color = "Min")) +
       geom_line(aes(x = t-startTime, y = mean, color = "Mean")) +
       geom_line(aes(x = t-startTime, y = p50, color = "50%til")) +
       geom_line(aes(x = t-startTime, y = p95, color = "95%til")) +
