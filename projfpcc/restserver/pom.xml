@@ -78,6 +78,19 @@
     <build>
         <pluginManagement>
             <plugins>
+<plugin>
+  <groupId>org.jooby</groupId>
+  <artifactId>jooby-maven-plugin</artifactId>
+  <version>1.0.0.CR7</version>
+  <configuration>
+    <mainClass>${application.class}</mainClass>
+    <fork>false</fork>
+    <debug>false</debug>
+    <vmArgs>
+      <vmArg>-server</vmArg>
+    </vmArgs>
+  </configuration>
+</plugin>
                 <!-- Build fat jar -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
