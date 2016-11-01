@@ -14,7 +14,7 @@ import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 
 public class App extends Jooby {
-	private static final int LOG_INTERVA_SECS = 1;
+	private static final int LOG_INTERVA_SECS = 5;
 	{
 		String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
 		use(new Metrics().request().threadDump().metric("memory" + suffix, new MemoryUsageGaugeSet())
