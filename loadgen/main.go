@@ -83,7 +83,7 @@ func main() {
 				<-t
 				select {
 				case <-pauseChan:
-					time.Sleep(500 * time.Millisecond)
+					time.Sleep(1 * time.Second)
 				case <-step:
 					dur := time.Now().Sub(start)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
