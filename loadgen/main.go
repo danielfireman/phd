@@ -84,8 +84,8 @@ func main() {
 				select {
 				case <-pauseChan:
 					dur := time.Now().Sub(start)
-					close(pauseChan)
 					time.Sleep(*stepDuration)
+					close(pauseChan) // cleaning up
 					pauseChan = make(chan struct{}, *maxQPS*workers)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
 					atomic.StoreUint64(&reqs, 0)
