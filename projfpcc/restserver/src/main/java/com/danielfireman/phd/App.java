@@ -57,53 +57,54 @@ public class App extends Jooby {
 					return reporter;
 				}));
 
-        use("*", "*", (req, rsp, chain) -> {
-            if (counter.doingGC.get()) {
-                rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
-                return;
-            }
+        if (System.getenv("CONTROL_GC") != null) {
+            use("GET", "/numprimes/:max", (req, rsp, chain) -> {
+                if (counter.doingGC.get()) {
+                    rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                    return;
+                }
 
-            boolean doGC = false;
-            String cause = "";
-            if (counter.incoming.get() % counter.sampleRate.get() == 0 && !counter.doingGC.get()) {
-                synchronized (counter) {
-                    // double checked locking
-                    if (counter.doingGC.get()) {
-                        rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
-                        return;
-                    }
-                    for (final MemoryPoolMXBean pool : counter.mem) {
-                        double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
-                        String name = pool.getName();
-                        if ((name.contains("Eden") || name.contains("Old")) && perc > 0.50) {
-                            cause = name;
-                            counter.doingGC.set(true);
-                            doGC = true;
-                            break;
+                boolean doGC = false;
+                String cause = "";
+                if (counter.incoming.get() % counter.sampleRate.get() == 0 && !counter.doingGC.get()) {
+                    synchronized (counter) {
+                        // double checked locking
+                        if (counter.doingGC.get()) {
+                            rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                            return;
+                        }
+                        for (final MemoryPoolMXBean pool : counter.mem) {
+                            double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
+                            String name = pool.getName();
+                            if ((name.contains("Eden") || name.contains("Old")) && perc > 0.50) {
+                                cause = name;
+                                counter.doingGC.set(true);
+                                doGC = true;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            if (doGC) {
-                long inc = counter.incoming.get();
-                long numReqLast = counter.numReqAtLastGC.get();
-                counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
-                counter.numReqAtLastGC.set(inc);
-                rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
-                System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
-                while (counter.finished.get() < counter.incoming.get()) {
-                    Thread.currentThread().sleep(50);
+                if (doGC) {
+                    long inc = counter.incoming.get();
+                    long numReqLast = counter.numReqAtLastGC.get();
+                    counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
+                    counter.numReqAtLastGC.set(inc);
+                    rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                    System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
+                    while (counter.finished.get() < counter.incoming.get()) {
+                        Thread.currentThread().sleep(50);
+                    }
+                    System.gc();
+                    counter.doingGC.set(false);
+                } else {
+                    counter.incoming.incrementAndGet();
+                    chain.next(req, rsp);
+                    counter.finished.incrementAndGet();
                 }
-                System.gc();
-                counter.doingGC.set(false);
-            } else {
-                counter.incoming.incrementAndGet();
-                chain.next(req, rsp);
-                counter.finished.incrementAndGet();
-            }
-        });
-
+            });
+        }
         get("/quit", () -> {
 			System.exit(0);
 			return Results.ok();
