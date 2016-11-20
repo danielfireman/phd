@@ -55,7 +55,7 @@ func main() {
 	workers := int(*numWorkers)
 	fmt.Fprintf(os.Stderr, "RunningOn:%d Workers:%d", runtime.GOMAXPROCS(0), workers)
 
-	pauseChan := make(chan struct{})
+	pauseChan := make(chan struct{}, *maxQPS*workers)
 	work := make(chan struct{}, *maxQPS*workers)
 	for i := 0; i < workers; i++ {
 		client := http.Client{
@@ -86,7 +86,7 @@ func main() {
 					dur := time.Now().Sub(start)
 					close(pauseChan)
 					time.Sleep(*stepDuration)
-					pauseChan = make(chan struct{})
+					pauseChan = make(chan struct{}, *maxQPS*workers)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
 					atomic.StoreUint64(&reqs, 0)
 					atomic.StoreUint64(&succs, 0)
