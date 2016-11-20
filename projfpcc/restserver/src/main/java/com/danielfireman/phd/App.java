@@ -88,14 +88,12 @@ public class App extends Jooby {
             if (doGC) {
                 long inc = counter.incoming.get();
                 long numReqLast = counter.numReqAtLastGC.get();
-                System.out.println("Num req since last gc: " + (inc - numReqLast));
-                counter.sampleRate.set(Math.min(100, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
+                counter.sampleRate.set(Math.min(200, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
                 counter.numReqAtLastGC.set(inc);
                 rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
                 System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
                 while (counter.finished.get() < counter.incoming.get()) {
                     Thread.currentThread().sleep(50);
-                    System.out.println("BOoo\n\n " + counter.finished.get() + " " + counter.incoming.get());
                 }
                 System.gc();
                 counter.doingGC.set(false);
