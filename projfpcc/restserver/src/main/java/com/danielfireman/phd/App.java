@@ -75,7 +75,7 @@ public class App extends Jooby {
                     for (final MemoryPoolMXBean pool : counter.mem) {
                         double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
                         String name = pool.getName();
-                        if ((name.contains("Eden") || name.contains("Old")) && perc > 0.5) {
+                        if ((name.contains("Eden") || name.contains("Old")) && perc > 0.75) {
                             cause = name;
                             counter.doingGC.set(true);
                             doGC = true;
@@ -88,7 +88,7 @@ public class App extends Jooby {
             if (doGC) {
                 long inc = counter.incoming.get();
                 long numReqLast = counter.numReqAtLastGC.get();
-                counter.sampleRate.set(Math.min(200, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
+                counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
                 counter.numReqAtLastGC.set(inc);
                 rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
                 System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
