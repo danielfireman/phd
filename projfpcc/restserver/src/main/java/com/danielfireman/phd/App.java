@@ -58,49 +58,52 @@ public class App extends Jooby {
 				}));
 
         use("*", "*", (req, rsp, chain) -> {
+            if (counter.doingGC.get()) {
+                rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                return;
+            }
 
-                long inc = counter.incoming.incrementAndGet();
-                boolean doGC = false;
-                String cause = "";
-                if (inc % counter.sampleRate.get() == 0 && !counter.doingGC.get()) {
+            boolean doGC = false;
+            String cause = "";
+            if (counter.incoming.get() % counter.sampleRate.get() == 0 && !counter.doingGC.get()) {
+                synchronized (counter) {
+                    // double checked locking
+                    if (counter.doingGC.get()) {
+                        rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                        return;
+                    }
                     for (final MemoryPoolMXBean pool : counter.mem) {
-                        double perc = (double)pool.getUsage().getUsed()/(double)pool.getUsage().getCommitted();
+                        double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
                         String name = pool.getName();
-                        //if (name.contains("Eden") || name.contains("Old")) {
-                        //    System.out.println("\nName: " + name + " " + pool.getUsage() + "\n");
-                        //}
                         if ((name.contains("Eden") || name.contains("Old")) && perc > 0.5) {
                             cause = name;
+                            counter.doingGC.set(true);
                             doGC = true;
                             break;
                         }
                     }
                 }
+            }
 
-                if (doGC) {
-                    counter.doingGC.set(true);
-                    long numReqLast = counter.numReqAtLastGC.get();
-                    System.out.println("Num req since last gc: " + (inc - numReqLast));
-                    counter.sampleRate.set(Math.min(100, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
-                    counter.numReqAtLastGC.set(inc);
-                    rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
-                    System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
-                    new Thread(() -> {
-                        try {
-                            while (counter.finished.get() < counter.incoming.get()) {
-                                Thread.currentThread().sleep(50);
-                                System.out.println("BOoo\n\n " + counter.finished.get() + " " + counter.incoming.get());
-                            }
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        System.gc();
-                        counter.doingGC.set(false);
-                    }).start();
-                } else {
-                    chain.next(req, rsp);
+            if (doGC) {
+                long inc = counter.incoming.get();
+                long numReqLast = counter.numReqAtLastGC.get();
+                System.out.println("Num req since last gc: " + (inc - numReqLast));
+                counter.sampleRate.set(Math.min(100, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
+                counter.numReqAtLastGC.set(inc);
+                rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
+                while (counter.finished.get() < counter.incoming.get()) {
+                    Thread.currentThread().sleep(50);
+                    System.out.println("BOoo\n\n " + counter.finished.get() + " " + counter.incoming.get());
                 }
+                System.gc();
+                counter.doingGC.set(false);
+            } else {
+                counter.incoming.incrementAndGet();
+                chain.next(req, rsp);
                 counter.finished.incrementAndGet();
+            }
         });
 
         get("/quit", () -> {
