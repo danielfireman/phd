@@ -83,9 +83,15 @@ func main() {
 				<-t
 				select {
 				case <-pauseChan:
+					dur := time.Now().Sub(start)
 					close(pauseChan)
-					time.Sleep(1 * time.Second)
+					time.Sleep(*stepDuration)
 					pauseChan = make(chan struct{})
+					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
+					atomic.StoreUint64(&reqs, 0)
+					atomic.StoreUint64(&succs, 0)
+					atomic.StoreUint64(&errs, 0)
+					return
 				case <-step:
 					dur := time.Now().Sub(start)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
