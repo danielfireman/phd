@@ -119,6 +119,12 @@ func main() {
 			continue
 		}
 
+		if (numSteps + 1) <= *numWarmupSteps {
+			numSteps++
+			continue
+		}
+
+		qps += *stepSize
 		if qps >= *maxQPS {
 			if increaseLoadFinishTime.Nanosecond() == 0 {
 				increaseLoadFinishTime = time.Now()
@@ -138,11 +144,6 @@ func main() {
 						}
 					}
 				}
-			}
-		} else {
-			numSteps++
-			if numSteps >= *numWarmupSteps {
-				qps += *stepSize
 			}
 		}
 	}

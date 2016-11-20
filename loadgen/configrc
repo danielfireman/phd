@@ -11,7 +11,7 @@ declare -a CLIENTS=('10.4.2.129')
 
 # Server IP. Need to set NUM_CLIENTS and NUM_CORES
 export SERVER_IP=10.4.5.250 # Localhost
-export NUM_CORES=1
+export NUM_CORES=2
 export NUM_CLIENTS=1
 
 # export SERVER_IP=10.4.5.216 # 2 Cores
@@ -22,15 +22,15 @@ export NUM_CLIENTS=1
 # export NUM_CORES=4
 # export NUM_CLIENTS=6
 
-export WARMUP_STEPS=2
+export WARMUP_STEPS=1
 export TIMEOUT=100ms
-export STEP_DURATION=5s  # Baseline 5s
-export INITIAL_QPS=20
-export STEP_SIZE=20
-export MAX_QPS=500
+export STEP_DURATION=1m  # Baseline 5s
+export INITIAL_QPS=120
+export STEP_SIZE=0
+export MAX_QPS=120
 export SUFFIXES="/numprimes/5000"  # CPU intensive
-#export KEEP_DURATION=15m
-export KEEP_DURATION=0s
+export KEEP_DURATION=3m
+#export KEEP_DURATION=0s
 
 # Request suffix.
 # export SUFFIXES="/allocmem/1048576"  # Memory intensive (1MB per request)
