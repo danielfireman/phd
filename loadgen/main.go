@@ -34,7 +34,7 @@ var (
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
 	keepDuration   = flag.Duration("keep_duration", 0*time.Millisecond, "Time without increasing QPS after max.")
-	gcTime         = flag.Duration("gc_time", 0*time.Second, "Time waiting for server to catch up.")
+	gcTime         = flag.Duration("gc_time", 20*time.Second, "Time waiting for server to catch up.")
 )
 
 const (
@@ -79,6 +79,7 @@ func main() {
 		step := time.Tick(*stepDuration)
 		t := time.Tick(time.Duration(float64(1e9)/float64(qps)) * time.Nanosecond)
 		start := time.Now()
+		pause := false
 		func() {
 			for {
 				<-t
@@ -94,6 +95,7 @@ func main() {
 						select {
 						case <-pauseChan:
 						default:
+							pause = true
 							return
 						}
 					}
@@ -112,6 +114,10 @@ func main() {
 				}
 			}
 		}()
+
+		if pause {
+			continue
+		}
 
 		if qps >= *maxQPS {
 			if increaseLoadFinishTime.Nanosecond() == 0 {
