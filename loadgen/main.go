@@ -131,17 +131,9 @@ func main() {
 			}
 			if increaseLoadFinishTime.Add(*keepDuration).Before(time.Now()) {
 				close(work)
-				for {
-					resp, err := http.Get(*clientAddr + quitSuffix)
-					if err == nil {
-						io.Copy(ioutil.Discard, resp.Body)
-						switch resp.StatusCode {
-						case http.StatusTooManyRequests:
-							time.Sleep(*gcTime)
-						default:
-							return
-						}
-					}
+				resp, err := http.Get(*clientAddr + quitSuffix)
+				if err == nil {
+					io.Copy(ioutil.Discard, resp.Body)
 				}
 			}
 		}
