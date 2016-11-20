@@ -55,6 +55,7 @@ func main() {
 	workers := int(*numWorkers)
 	fmt.Fprintf(os.Stderr, "RunningOn:%d Workers:%d", runtime.GOMAXPROCS(0), workers)
 
+	pauseChan := make(chan struct{})
 	work := make(chan struct{}, *maxQPS*workers)
 	for i := 0; i < workers; i++ {
 		client := http.Client{
@@ -64,10 +65,9 @@ func main() {
 					Timeout:   *timeout,
 					KeepAlive: *timeout,
 				}).Dial,
-				DisableKeepAlives: true,
 			},
 		}
-		go worker(client, work, suffixes)
+		go worker(client, work, pauseChan, suffixes)
 	}
 
 	qps := *initialQps
@@ -82,6 +82,8 @@ func main() {
 			for {
 				<-t
 				select {
+				case <-pauseChan:
+					time.Sleep(500 * time.Millisecond)
 				case <-step:
 					dur := time.Now().Sub(start)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
@@ -119,7 +121,7 @@ func main() {
 	}
 }
 
-func worker(client http.Client, work chan struct{}, suffixes []string) {
+func worker(client http.Client, work chan struct{}, pauseChan chan struct{}, suffixes []string) {
 	for {
 		for _, suffix := range suffixes {
 			<-work
@@ -127,9 +129,12 @@ func worker(client http.Client, work chan struct{}, suffixes []string) {
 			url := *clientAddr + suffix
 			resp, err := client.Get(url)
 			if err == nil {
-				if resp.StatusCode == 200 {
+				switch resp.StatusCode {
+				case http.StatusOK:
 					atomic.AddUint64(&succs, 1)
-				} else {
+				case http.StatusTooManyRequests:
+					pauseChan <- struct{}{}
+				default:
 					atomic.AddUint64(&errs, 1)
 				}
 				io.Copy(ioutil.Discard, resp.Body)
