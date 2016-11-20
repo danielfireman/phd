@@ -136,11 +136,10 @@ func main() {
 					if err == nil {
 						io.Copy(ioutil.Discard, resp.Body)
 						switch resp.StatusCode {
-						case http.StatusOK:
-							return
 						case http.StatusTooManyRequests:
 							time.Sleep(*gcTime)
-							continue
+						default:
+							return
 						}
 					}
 				}
