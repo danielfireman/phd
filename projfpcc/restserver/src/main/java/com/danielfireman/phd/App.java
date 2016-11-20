@@ -1,39 +1,101 @@
 package com.danielfireman.phd;
 
 import java.io.File;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
+import com.sun.management.GarbageCollectionNotificationInfo;
 import org.jooby.Jooby;
 import org.jooby.Results;
+import org.jooby.Status;
 import org.jooby.metrics.Metrics;
 
 import com.codahale.metrics.CsvReporter;
-import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 
+import javax.management.Notification;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationListener;
+import javax.management.openmbean.CompositeData;
+
 public class App extends Jooby {
-	private static final int LOG_INTERVA_SECS = 5;
+    static class RequestCounter {
+        AtomicLong incoming = new AtomicLong();
+        AtomicLong finished = new AtomicLong();
+        AtomicLong numReqAtLastGC = new AtomicLong();
+        AtomicLong sampleRate = new AtomicLong(10);
+        List<MemoryPoolMXBean> mem = ManagementFactory.getMemoryPoolMXBeans();
+    }
+
+    static RequestCounter counter = new RequestCounter();
+
+	private static final int LOG_INTERVAL_SECS = 5;
 	{
+        installGCMonitoring();
 		String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
 		use(new Metrics().request().threadDump().metric("memory" + suffix, new MemoryUsageGaugeSet())
 				.request()
 				.metric("threads" + suffix, new ThreadStatesGaugeSet())
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
-				.metric("fs" + suffix, new FileDescriptorRatioGauge())
 				.metric("cpu" + suffix, new CpuInfoGaugeSet())
-				//.metric("process" + suffix, new ProcessInfoGaugeSet())
 				.reporter(registry -> {
 					CsvReporter reporter = CsvReporter.forRegistry(registry)
                             .convertRatesTo(TimeUnit.SECONDS)
 							.convertDurationsTo(TimeUnit.MILLISECONDS)
                             .build(new File("logs/"));
-					reporter.start(LOG_INTERVA_SECS, TimeUnit.SECONDS);
+					reporter.start(LOG_INTERVAL_SECS, TimeUnit.SECONDS);
 					return reporter;
 				}));
 
-		get("/quit", () -> {
+        use("*", "*", (req, rsp, chain) -> {
+                long inc = counter.incoming.incrementAndGet();
+                boolean doGC = false;
+                String cause = "";
+                if (inc % counter.sampleRate.get() == 0) {
+                    for (final MemoryPoolMXBean pool : counter.mem) {
+                        double perc = (double)pool.getUsage().getUsed()/(double)pool.getUsage().getCommitted();
+                        String name = pool.getName();
+                        //if (name.contains("Eden") || name.contains("Old")) {
+                        //    System.out.println("\nName: " + name + " " + pool.getUsage() + "\n");
+                        //}
+                        if ((name.contains("Eden") || name.contains("Old")) && perc > 0.5) {
+                            cause = name;
+                            doGC = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (doGC) {
+                    long numReqLast = counter.numReqAtLastGC.get();
+                    System.out.println("Num req since last gc: " + (inc - numReqLast));
+                    counter.sampleRate.set(Math.min(100, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
+                    counter.numReqAtLastGC.set(inc);
+                    rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                    System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
+                    new Thread(() -> {
+                        try {
+                            Thread.currentThread().sleep(200);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        System.gc();
+                    }).start();
+                } else {
+                    chain.next(req, rsp);
+                }
+                counter.finished.incrementAndGet();
+        });
+
+        get("/quit", () -> {
 			System.exit(0);
 			return Results.ok();
 		});
@@ -72,5 +134,69 @@ public class App extends Jooby {
 
 	public static void main(final String[] args) throws Throwable {
 		run(App::new, args);
+	}
+
+	public static void installGCMonitoring(){
+		//get all the GarbageCollectorMXBeans - there's one for each heap generation
+		//so probably two - the old generation and young generation
+		List<GarbageCollectorMXBean> gcbeans = java.lang.management.ManagementFactory.getGarbageCollectorMXBeans();
+		//Install a notifcation handler for each bean
+		for (GarbageCollectorMXBean gcbean : gcbeans) {
+			System.out.println(gcbean);
+			NotificationEmitter emitter = (NotificationEmitter) gcbean;
+			//use an anonymously generated listener for this example
+			// - proper code should really use a named class
+			NotificationListener listener = new NotificationListener() {
+				//keep a count of the total time spent in GCs
+				long totalGcDuration = 0;
+
+				//implement the notifier callback handler
+				@Override
+				public void handleNotification(Notification notification, Object handback) {
+					//we only handle GARBAGE_COLLECTION_NOTIFICATION notifications here
+					if (notification.getType().equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION)) {
+						//get the information associated with this notification
+						GarbageCollectionNotificationInfo info = GarbageCollectionNotificationInfo.from((CompositeData) notification.getUserData());
+						//get all the info and pretty print it
+						long duration = info.getGcInfo().getDuration();
+						String gctype = info.getGcAction();
+						if ("end of minor GC".equals(gctype)) {
+							gctype = "Young Gen GC";
+						} else if ("end of major GC".equals(gctype)) {
+							gctype = "Old Gen GC";
+						}
+						System.out.println();
+						System.out.println(gctype + ": - " + info.getGcInfo().getId()+ " " + info.getGcName() + " (from " + info.getGcCause()+") "+duration + " milliseconds; start-end times " + info.getGcInfo().getStartTime()+ "-" + info.getGcInfo().getEndTime());
+						//System.out.println("GcInfo CompositeType: " + info.getGcInfo().getCompositeType());
+						//System.out.println("GcInfo MemoryUsageAfterGc: " + info.getGcInfo().getMemoryUsageAfterGc());
+						//System.out.println("GcInfo MemoryUsageBeforeGc: " + info.getGcInfo().getMemoryUsageBeforeGc());
+
+						//Get the information about each memory space, and pretty print it
+						Map<String, MemoryUsage> membefore = info.getGcInfo().getMemoryUsageBeforeGc();
+						Map<String, MemoryUsage> mem = info.getGcInfo().getMemoryUsageAfterGc();
+						for (Map.Entry<String, MemoryUsage> entry : mem.entrySet()) {
+							String name = entry.getKey();
+							MemoryUsage memdetail = entry.getValue();
+							long memInit = memdetail.getInit();
+							long memCommitted = memdetail.getCommitted();
+							long memMax = memdetail.getMax();
+							long memUsed = memdetail.getUsed();
+							MemoryUsage before = membefore.get(name);
+							long beforepercent = ((before.getUsed()*1000L)/before.getCommitted());
+							long percent = ((memUsed*1000L)/before.getCommitted()); //>100% when it gets expanded
+
+							System.out.print(name + (memCommitted==memMax?"(fully expanded)":"(still expandable)") +"used: "+(beforepercent/10)+"."+(beforepercent%10)+"%->"+(percent/10)+"."+(percent%10)+"%("+((memUsed/1048576)+1)+"MB) / ");
+						}
+						System.out.println();
+						totalGcDuration += info.getGcInfo().getDuration();
+						long percent = totalGcDuration*1000L/info.getGcInfo().getEndTime();
+						System.out.println("GC cumulated overhead "+(percent/10)+"."+(percent%10)+"%");
+					}
+				}
+			};
+
+			//Add the listener
+			emitter.addNotificationListener(listener, null, null);
+		}
 	}
 }
