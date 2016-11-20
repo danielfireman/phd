@@ -34,6 +34,7 @@ var (
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
 	keepDuration   = flag.Duration("keep_duration", 0*time.Millisecond, "Time without increasing QPS after max.")
+	gcTime         = flag.Duration("gc_time", 0*time.Second, "Time waiting for server to catch up.")
 )
 
 const (
@@ -84,14 +85,18 @@ func main() {
 				select {
 				case <-pauseChan:
 					dur := time.Now().Sub(start)
-					time.Sleep(*stepDuration)
-					close(pauseChan) // cleaning up
-					pauseChan = make(chan struct{}, *maxQPS*workers)
+					time.Sleep(*gcTime)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
 					atomic.StoreUint64(&reqs, 0)
 					atomic.StoreUint64(&succs, 0)
 					atomic.StoreUint64(&errs, 0)
-					return
+					for {
+						select {
+						case <-pauseChan:
+						default:
+							return
+						}
+					}
 				case <-step:
 					dur := time.Now().Sub(start)
 					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
