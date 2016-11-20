@@ -8,6 +8,7 @@ import java.lang.management.MemoryUsage;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
@@ -33,6 +34,7 @@ public class App extends Jooby {
         AtomicLong numReqAtLastGC = new AtomicLong();
         AtomicLong sampleRate = new AtomicLong(10);
         List<MemoryPoolMXBean> mem = ManagementFactory.getMemoryPoolMXBeans();
+        AtomicBoolean doingGC = new AtomicBoolean(false);
     }
 
     static RequestCounter counter = new RequestCounter();
@@ -56,10 +58,11 @@ public class App extends Jooby {
 				}));
 
         use("*", "*", (req, rsp, chain) -> {
+
                 long inc = counter.incoming.incrementAndGet();
                 boolean doGC = false;
                 String cause = "";
-                if (inc % counter.sampleRate.get() == 0) {
+                if (inc % counter.sampleRate.get() == 0 && !counter.doingGC.get()) {
                     for (final MemoryPoolMXBean pool : counter.mem) {
                         double perc = (double)pool.getUsage().getUsed()/(double)pool.getUsage().getCommitted();
                         String name = pool.getName();
@@ -75,6 +78,7 @@ public class App extends Jooby {
                 }
 
                 if (doGC) {
+                    counter.doingGC.set(true);
                     long numReqLast = counter.numReqAtLastGC.get();
                     System.out.println("Num req since last gc: " + (inc - numReqLast));
                     counter.sampleRate.set(Math.min(100, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
@@ -83,11 +87,15 @@ public class App extends Jooby {
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
                     new Thread(() -> {
                         try {
-                            Thread.currentThread().sleep(200);
+                            while (counter.finished.get() < counter.incoming.get()) {
+                                Thread.currentThread().sleep(50);
+                                System.out.println("BOoo\n\n " + counter.finished.get() + " " + counter.incoming.get());
+                            }
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
                         System.gc();
+                        counter.doingGC.set(false);
                     }).start();
                 } else {
                     chain.next(req, rsp);
