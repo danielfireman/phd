@@ -60,17 +60,22 @@ public class App extends Jooby {
         if (System.getenv("CONTROL_GC") != null) {
             use("GET", "/numprimes/:max", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
-                    rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                            rsp.status(Status.TOO_MANY_REQUESTS)
+			        .length(0)
+			        .end();
+
                     return;
                 }
 
                 boolean doGC = false;
                 String cause = "";
-                if (counter.incoming.get() % counter.sampleRate.get() == 0 && !counter.doingGC.get()) {
+                if (counter.incoming.get() % counter.sampleRate.get() == 0) {
                     synchronized (counter) {
                         // double checked locking
                         if (counter.doingGC.get()) {
-                            rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                            rsp.status(Status.TOO_MANY_REQUESTS)
+			        .length(0)
+			        .end();
                             return;
                         }
                         for (final MemoryPoolMXBean pool : counter.mem) {
@@ -91,8 +96,12 @@ public class App extends Jooby {
                     long numReqLast = counter.numReqAtLastGC.get();
                     counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
                     counter.numReqAtLastGC.set(inc);
-                    rsp.send(Results.with(Status.TOO_MANY_REQUESTS));
+                            rsp.status(Status.TOO_MANY_REQUESTS)
+			        .length(0)
+			        .end();
+
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
+		    // Waiting until queue gets empty.
                     while (counter.finished.get() < counter.incoming.get()) {
                         Thread.currentThread().sleep(50);
                     }
