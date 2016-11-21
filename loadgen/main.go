@@ -87,7 +87,6 @@ func main() {
 				case <-t:
 					work <- struct{}{}
 				case <-pauseChan:
-					dur := time.Now().Sub(start)
 					time.Sleep(*gcTime)
 					// Emptying pauseChan before continue.
 					for {
