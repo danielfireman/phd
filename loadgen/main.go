@@ -28,13 +28,13 @@ var (
 	stepSize       = flag.Int("step_size", 100, "Step size.")
 	maxQPS         = flag.Int("max_qps", 1500, "Maximum QPS.")
 	numWarmupSteps = flag.Int("num_warmup_steps", 2, "Number of steps to warmup. They are going to receive initial QPS.")
-	timeout        = flag.Duration("timeout", 20*time.Millisecond, "HTTP client timeout")
+	timeout        = flag.Duration("timeout", 300*time.Millisecond, "HTTP client timeout")
 	clientAddr     = flag.String("addr", "http://10.4.2.103:8080", "Client HTTP address")
 	numWorkers     = flag.Int("workers", 32, "Client HTTP address")
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
 	keepDuration   = flag.Duration("keep_duration", 0*time.Millisecond, "Time without increasing QPS after max.")
-	gcTime         = flag.Duration("gc_time", 20*time.Second, "Time waiting for server to catch up.")
+	gcTime         = flag.Duration("gc_time", 1*time.Second, "Time waiting for server to catch up.")
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 )
 
 // Shared variables, need to go trough atomic.
-var succs, errs, reqs uint64
+var succs, errs, reqs, tooMany uint64
 
 func main() {
 	flag.Parse()
@@ -56,8 +56,8 @@ func main() {
 	workers := int(*numWorkers)
 	fmt.Fprintf(os.Stderr, "RunningOn:%d Workers:%d", runtime.GOMAXPROCS(0), workers)
 
-	pauseChan := make(chan struct{}, *maxQPS*workers)
-	work := make(chan struct{}, *maxQPS*workers)
+	pauseChan := make(chan struct{}, workers)
+	work := make(chan struct{}, workers)
 	for i := 0; i < workers; i++ {
 		client := http.Client{
 			Timeout: *timeout,
@@ -72,45 +72,48 @@ func main() {
 	}
 
 	qps := *initialQps
-	fmt.Printf("ts,qps,totalReq,succReq,errReq,throughput\n")
+	fmt.Printf("ts,qps,totalReq,succReq,errReq,tooMany,throughput\n")
 	numSteps := 0
 	var increaseLoadFinishTime time.Time
 	for {
 		step := time.Tick(*stepDuration)
-		t := time.Tick(time.Duration(float64(1e9)/float64(qps)) * time.Nanosecond)
+		tickDuration := time.Duration(float64(1e9)/float64(qps)) * time.Nanosecond
+		t := time.Tick(tickDuration)
 		start := time.Now()
 		pause := false
 		func() {
 			for {
-				<-t
 				select {
+				case <-t:
+					work <- struct{}{}
 				case <-pauseChan:
 					dur := time.Now().Sub(start)
 					time.Sleep(*gcTime)
-					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
+					fmt.Printf("%d,%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, tooMany, float64(succs)/dur.Seconds())
 					atomic.StoreUint64(&reqs, 0)
 					atomic.StoreUint64(&succs, 0)
 					atomic.StoreUint64(&errs, 0)
+					atomic.StoreUint64(&tooMany, 0)
+					// Emptying pauseChan before continue.
 					for {
 						select {
 						case <-pauseChan:
 						default:
+							fmt.Println("Restarting ..")
 							pause = true
 							return
 						}
 					}
 				case <-step:
 					dur := time.Now().Sub(start)
-					fmt.Printf("%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, float64(succs)/dur.Seconds())
+					fmt.Printf("%d,%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, tooMany, float64(succs)/dur.Seconds())
 					atomic.StoreUint64(&reqs, 0)
 					atomic.StoreUint64(&succs, 0)
 					atomic.StoreUint64(&errs, 0)
+					atomic.StoreUint64(&tooMany, 0)
 					return
 				default:
-					// Kind of flow control. We don't want the queue grows too big.
-					if len(work) < workers*2 {
-						work <- struct{}{}
-					}
+					time.Sleep(tickDuration)
 				}
 			}
 		}()
@@ -124,26 +127,29 @@ func main() {
 			continue
 		}
 
-		qps += *stepSize
 		if qps >= *maxQPS {
 			if increaseLoadFinishTime.Nanosecond() == 0 {
 				increaseLoadFinishTime = time.Now()
 			}
 			if increaseLoadFinishTime.Add(*keepDuration).Before(time.Now()) {
 				close(work)
+				close(pauseChan)
 				resp, err := http.Get(*clientAddr + quitSuffix)
 				if err == nil {
 					io.Copy(ioutil.Discard, resp.Body)
+					resp.Body.Close()
 				}
+				return
 			}
+		} else {
+			qps += *stepSize
 		}
 	}
 }
 
 func worker(client http.Client, work chan struct{}, pauseChan chan struct{}, suffixes []string) {
-	for {
+	for _ = range work {
 		for _, suffix := range suffixes {
-			<-work
 			atomic.AddUint64(&reqs, 1)
 			url := *clientAddr + suffix
 			resp, err := client.Get(url)
@@ -152,6 +158,7 @@ func worker(client http.Client, work chan struct{}, pauseChan chan struct{}, suf
 				case http.StatusOK:
 					atomic.AddUint64(&succs, 1)
 				case http.StatusTooManyRequests:
+					atomic.AddUint64(&tooMany, 1)
 					pauseChan <- struct{}{}
 				default:
 					atomic.AddUint64(&errs, 1)
