@@ -81,7 +81,7 @@ public class App extends Jooby {
                         for (final MemoryPoolMXBean pool : counter.mem) {
                             double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
                             String name = pool.getName();
-                            if ((name.contains("Eden") || name.contains("Old")) && perc > 0.50) {
+                            if ((name.contains("Eden") || name.contains("Old")) && perc > 0.75) {
                                 cause = name;
                                 counter.doingGC.set(true);
                                 doGC = true;
