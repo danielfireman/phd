@@ -34,7 +34,7 @@ var (
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
 	keepDuration   = flag.Duration("keep_duration", 0*time.Millisecond, "Time without increasing QPS after max.")
-	gcTime         = flag.Duration("gc_time", 1*time.Second, "Time waiting for server to catch up.")
+	gcTime         = flag.Duration("gc_time", 500*time.Millisecond, "Time waiting for server to catch up.")
 )
 
 const (
