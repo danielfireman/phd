@@ -34,7 +34,7 @@ var (
 	numCores       = flag.Int("cpus", 2, "Client HTTP address")
 	msgSuffixes    = flag.String("msg_suffixes", "/numprimes/5000", "Suffix to add to the msg.")
 	keepDuration   = flag.Duration("keep_duration", 0*time.Millisecond, "Time without increasing QPS after max.")
-	gcTime         = flag.Duration("gc_time", 500*time.Millisecond, "Time waiting for server to catch up.")
+	gcTime         = flag.Duration("gc_time", 100*time.Millisecond, "Time waiting for server to catch up.")
 )
 
 const (
@@ -89,17 +89,11 @@ func main() {
 				case <-pauseChan:
 					dur := time.Now().Sub(start)
 					time.Sleep(*gcTime)
-					fmt.Printf("%d,%d,%d,%d,%d,%d,%.2f\n", time.Now().Unix(), qps, reqs, succs, errs, tooMany, float64(succs)/dur.Seconds())
-					atomic.StoreUint64(&reqs, 0)
-					atomic.StoreUint64(&succs, 0)
-					atomic.StoreUint64(&errs, 0)
-					atomic.StoreUint64(&tooMany, 0)
 					// Emptying pauseChan before continue.
 					for {
 						select {
 						case <-pauseChan:
 						default:
-							fmt.Println("Restarting ..")
 							pause = true
 							return
 						}
