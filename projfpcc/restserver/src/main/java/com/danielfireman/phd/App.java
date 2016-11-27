@@ -83,7 +83,6 @@ public class App extends Jooby {
                 if (counter.doingGC.get()) {
                     Snapshot s = counter.forcedGCHist.getSnapshot();
                     String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
-                    System.out.println("RA: "+ra);
                     rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                     return;
                 }
@@ -96,7 +95,6 @@ public class App extends Jooby {
                         if (counter.doingGC.get()) {
                             Snapshot s = counter.forcedGCHist.getSnapshot();
                             String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
-                            System.out.println("RA: "+ra);
                             rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                             return;
                         }
@@ -121,7 +119,6 @@ public class App extends Jooby {
 
                     Snapshot s = counter.forcedGCHist.getSnapshot();
                     String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
-                    System.out.println("RA: "+ra);
                     rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
