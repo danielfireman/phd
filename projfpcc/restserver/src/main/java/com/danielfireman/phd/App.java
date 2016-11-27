@@ -38,6 +38,7 @@ public class App extends Jooby {
         AtomicLong gcCountForcedGC = new AtomicLong(0);
         AtomicLong gcTimeForcedGCMillis = new AtomicLong(0);
 		Histogram forcedGCHist = new Histogram(new SlidingWindowReservoir(50));
+        Histogram requestTimeHistogram = new Histogram(new SlidingWindowReservoir(50));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
@@ -112,6 +113,7 @@ public class App extends Jooby {
                 }
 
                 if (doGC) {
+                    long startTime = System.currentTimeMillis();
                     long inc = counter.incoming.get();
                     long numReqLast = counter.numReqAtLastGC.get();
                     counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
@@ -123,9 +125,8 @@ public class App extends Jooby {
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
 		    		// Waiting until queue gets empty.
-                    long startTime = System.currentTimeMillis();
                     while (counter.finished.get() < counter.incoming.get()) {
-                        Thread.sleep(10);
+                        Thread.sleep((long)counter.requestTimeHistogram.getSnapshot().getMedian());
                     }
                     counter.gcCountForcedGC.incrementAndGet();
                     System.gc();
@@ -134,9 +135,11 @@ public class App extends Jooby {
                     counter.gcTimeForcedGCMillis.addAndGet(gcTime);
                     counter.doingGC.set(false);
                 } else {
+                    long startTime = System.currentTimeMillis();
                     counter.incoming.incrementAndGet();
                     chain.next(req, rsp);
                     counter.finished.incrementAndGet();
+                    counter.requestTimeHistogram.update(System.currentTimeMillis() - startTime);
                 }
             });
         }
