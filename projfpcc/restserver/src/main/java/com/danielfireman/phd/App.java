@@ -77,7 +77,7 @@ public class App extends Jooby {
 					return reporter;
 				}));
 
-        if (System.getenv("CONTROL_GC") != null && System.getenv("CONTROL_GC") != "") {
+        if (System.getenv("CONTROL_GC") != null && !System.getenv("CONTROL_GC").equals("")) {
             double threshold = Double.parseDouble(System.getenv("CONTROL_GC"));
             System.out.println("Controlling GC wih threshold: " + threshold);
             use("GET", "/numprimes/:max", (req, rsp, chain) -> {
