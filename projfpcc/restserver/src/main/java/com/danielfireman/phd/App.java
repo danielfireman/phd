@@ -37,8 +37,8 @@ public class App extends Jooby {
         AtomicBoolean doingGC = new AtomicBoolean(false);
         AtomicLong gcCountForcedGC = new AtomicLong(0);
         AtomicLong gcTimeForcedGCMillis = new AtomicLong(0);
-		Histogram forcedGCHist = new Histogram(new SlidingWindowReservoir(50));
-        Histogram requestTimeHistogram = new Histogram(new SlidingWindowReservoir(50));
+		Histogram forcedGCHist = new Histogram(new SlidingWindowReservoir(10));
+        Histogram requestTimeHistogram = new Histogram(new SlidingWindowReservoir(300));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
@@ -83,7 +83,7 @@ public class App extends Jooby {
             use("GET", "/numprimes/:max", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
                     Snapshot s = counter.forcedGCHist.getSnapshot();
-                    String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
+                    String ra = Double.toString((double)((double)(s.getMedian() + s.getStdDev())/1000.0));
                     rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                     return;
                 }
@@ -95,10 +95,12 @@ public class App extends Jooby {
                         // double checked locking
                         if (counter.doingGC.get()) {
                             Snapshot s = counter.forcedGCHist.getSnapshot();
-                            String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
+                            String ra = Double.toString((double)((double)(s.getMedian() + s.getStdDev())/1000.0));
                             rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                             return;
                         }
+                        Snapshot s = counter.requestTimeHistogram.getSnapshot();
+                        System.out.println("ReqHist: " + s.getMedian() + " " + s.get95thPercentile() + " " + s.get99thPercentile());
                         for (final MemoryPoolMXBean pool : counter.mem) {
                             double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
                             String name = pool.getName();
@@ -120,7 +122,7 @@ public class App extends Jooby {
                     counter.numReqAtLastGC.set(inc);
 
                     Snapshot s = counter.forcedGCHist.getSnapshot();
-                    String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
+                    String ra = Double.toString((double)((double)(s.getMedian() + s.getStdDev())/1000.0));
                     rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
