@@ -1,34 +1,33 @@
 package com.danielfireman.phd;
 
-import java.io.File;
-import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryPoolMXBean;
-import java.lang.management.MemoryUsage;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.codahale.metrics.*;
-import com.google.common.collect.ImmutableMap;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.sun.management.GarbageCollectionNotificationInfo;
 import org.jooby.Jooby;
 import org.jooby.Results;
 import org.jooby.Status;
 import org.jooby.metrics.Metrics;
 
-import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
-import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
-import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
-
 import javax.management.Notification;
 import javax.management.NotificationEmitter;
 import javax.management.NotificationListener;
 import javax.management.openmbean.CompositeData;
+import java.io.File;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class App extends Jooby {
+
     static class RequestCounter {
         AtomicLong incoming = new AtomicLong();
         AtomicLong finished = new AtomicLong();
@@ -36,6 +35,23 @@ public class App extends Jooby {
         AtomicLong sampleRate = new AtomicLong(10);
         List<MemoryPoolMXBean> mem = ManagementFactory.getMemoryPoolMXBeans();
         AtomicBoolean doingGC = new AtomicBoolean(false);
+        AtomicLong gcCountForcedGC = new AtomicLong(0);
+        AtomicLong gcTimeForcedGCMillis = new AtomicLong(0);
+		Histogram forcedGCHist = new Histogram(new SlidingWindowReservoir(10));
+    }
+
+    static class ForcedGCMetricSet implements MetricSet {
+        private final RequestCounter counter;
+        ForcedGCMetricSet(RequestCounter counter) {
+            this.counter = counter;
+        }
+        @Override
+        public Map<String, Metric> getMetrics() {
+            final Map<String, Metric> gauges = new HashMap<>();
+            gauges.put("count", (Gauge<Long>) () -> counter.gcCountForcedGC.get());
+            gauges.put("time", (Gauge<Long>) () -> counter.gcTimeForcedGCMillis.get());
+            return gauges;
+        }
     }
 
     static RequestCounter counter = new RequestCounter();
@@ -49,6 +65,7 @@ public class App extends Jooby {
                 .metric("memory" + suffix, new MemoryUsageGaugeSet())
 				.metric("threads" + suffix, new ThreadStatesGaugeSet())
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
+                .metric("fgc" + suffix, new ForcedGCMetricSet(counter))
 				.metric("cpu" + suffix, new CpuInfoGaugeSet())
 				.reporter(registry -> {
 					CsvReporter reporter = CsvReporter.forRegistry(registry)
@@ -62,8 +79,9 @@ public class App extends Jooby {
         if (System.getenv("CONTROL_GC") != null) {
             use("GET", "/numprimes/:max", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
-                    // TODO(danielfireman): Calculate GC elapsed time average + STDDEV and set Retry-After header
-                    rsp.status(Status.TOO_MANY_REQUESTS).length(0).end();
+                    Snapshot s = counter.forcedGCHist.getSnapshot();
+                    String ra = Double.toString((double)(s.getMedian() + s.getStdDev())/1000d);
+                    rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                     return;
                 }
 
@@ -73,8 +91,9 @@ public class App extends Jooby {
                     synchronized (counter) {
                         // double checked locking
                         if (counter.doingGC.get()) {
-                            // TODO(danielfireman): Calculate GC elapsed time average + STDDEV and set Retry-After header
-                            rsp.status(Status.TOO_MANY_REQUESTS).length(0).end();
+                            Snapshot s = counter.forcedGCHist.getSnapshot();
+                            String ra = Double.toString((double)(s.getMedian() + s.getStdDev())/1000d);
+                            rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                             return;
                         }
                         for (final MemoryPoolMXBean pool : counter.mem) {
@@ -95,15 +114,22 @@ public class App extends Jooby {
                     long numReqLast = counter.numReqAtLastGC.get();
                     counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
                     counter.numReqAtLastGC.set(inc);
-                    // TODO(danielfireman): Calculate GC elapsed time average + STDDEV and set Retry-After header
-                    rsp.status(Status.TOO_MANY_REQUESTS).length(0).end();
+
+                    Snapshot s = counter.forcedGCHist.getSnapshot();
+                    String ra = Double.toString((double)(s.getMedian() + s.getStdDev())/1000d);
+                    rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
 		    		// Waiting until queue gets empty.
                     while (counter.finished.get() < counter.incoming.get()) {
                         Thread.currentThread().sleep(50);
                     }
+                    counter.gcCountForcedGC.incrementAndGet();
+                    long startTime = System.currentTimeMillis();
                     System.gc();
+                    long gcTime = System.currentTimeMillis()-startTime;
+                    counter.forcedGCHist.update(gcTime);
+                    counter.gcTimeForcedGCMillis.addAndGet(gcTime);
                     counter.doingGC.set(false);
                 } else {
                     counter.incoming.incrementAndGet();
