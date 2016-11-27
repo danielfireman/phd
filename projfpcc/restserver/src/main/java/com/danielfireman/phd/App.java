@@ -11,13 +11,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.codahale.metrics.*;
+import com.google.common.collect.ImmutableMap;
 import com.sun.management.GarbageCollectionNotificationInfo;
 import org.jooby.Jooby;
 import org.jooby.Results;
 import org.jooby.Status;
 import org.jooby.metrics.Metrics;
 
-import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
@@ -43,8 +44,9 @@ public class App extends Jooby {
 	{
         installGCMonitoring();
 		String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
-		use(new Metrics().request().threadDump().metric("memory" + suffix, new MemoryUsageGaugeSet())
-				.request()
+		use(new Metrics()
+                .request()
+                .metric("memory" + suffix, new MemoryUsageGaugeSet())
 				.metric("threads" + suffix, new ThreadStatesGaugeSet())
 				.metric("gc" + suffix, new GarbageCollectorMetricSet())
 				.metric("cpu" + suffix, new CpuInfoGaugeSet())
@@ -60,10 +62,8 @@ public class App extends Jooby {
         if (System.getenv("CONTROL_GC") != null) {
             use("GET", "/numprimes/:max", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
-                            rsp.status(Status.TOO_MANY_REQUESTS)
-			        .length(0)
-			        .end();
-
+                    // TODO(danielfireman): Calculate GC elapsed time average + STDDEV and set Retry-After header
+                    rsp.status(Status.TOO_MANY_REQUESTS).length(0).end();
                     return;
                 }
 
@@ -73,9 +73,8 @@ public class App extends Jooby {
                     synchronized (counter) {
                         // double checked locking
                         if (counter.doingGC.get()) {
-                            rsp.status(Status.TOO_MANY_REQUESTS)
-			        .length(0)
-			        .end();
+                            // TODO(danielfireman): Calculate GC elapsed time average + STDDEV and set Retry-After header
+                            rsp.status(Status.TOO_MANY_REQUESTS).length(0).end();
                             return;
                         }
                         for (final MemoryPoolMXBean pool : counter.mem) {
@@ -96,12 +95,11 @@ public class App extends Jooby {
                     long numReqLast = counter.numReqAtLastGC.get();
                     counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double) (inc - numReqLast) / 10d))));
                     counter.numReqAtLastGC.set(inc);
-                            rsp.status(Status.TOO_MANY_REQUESTS)
-			        .length(0)
-			        .end();
+                    // TODO(danielfireman): Calculate GC elapsed time average + STDDEV and set Retry-After header
+                    rsp.status(Status.TOO_MANY_REQUESTS).length(0).end();
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
-		    // Waiting until queue gets empty.
+		    		// Waiting until queue gets empty.
                     while (counter.finished.get() < counter.incoming.get()) {
                         Thread.currentThread().sleep(50);
                     }
