@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -56,7 +57,7 @@ func main() {
 	workers := int(*numWorkers)
 	fmt.Fprintf(os.Stderr, "RunningOn:%d Workers:%d", runtime.GOMAXPROCS(0), workers)
 
-	pauseChan := make(chan struct{}, workers)
+	pauseChan := make(chan float64, workers)
 	work := make(chan struct{}, workers)
 	for i := 0; i < workers; i++ {
 		client := http.Client{
@@ -86,8 +87,13 @@ func main() {
 				select {
 				case <-t:
 					work <- struct{}{}
-				case <-pauseChan:
-					time.Sleep(*gcTime)
+				case pt := <-pauseChan:
+					fmt.Printf("Sleeping: %f seconds\n", pt)
+					if pt == 0 {
+	                                       	time.Sleep(*gcTime)
+					} else {
+						time.Sleep(time.Duration(pt) * time.Second)
+					}
 					// Emptying pauseChan before continue.
 					for {
 						select {
@@ -140,7 +146,7 @@ func main() {
 	}
 }
 
-func worker(client http.Client, work chan struct{}, pauseChan chan struct{}, suffixes []string) {
+func worker(client http.Client, work chan struct{}, pauseChan chan float64, suffixes []string) {
 	for _ = range work {
 		for _, suffix := range suffixes {
 			atomic.AddUint64(&reqs, 1)
@@ -152,7 +158,11 @@ func worker(client http.Client, work chan struct{}, pauseChan chan struct{}, suf
 					atomic.AddUint64(&succs, 1)
 				case http.StatusTooManyRequests:
 					atomic.AddUint64(&tooMany, 1)
-					pauseChan <- struct{}{}
+					ra := resp.Header.Get("Retry-After")
+					if ra != "" {
+						pt, _ := strconv.ParseFloat(ra, 64)
+						pauseChan <- pt
+					}
 				default:
 					atomic.AddUint64(&errs, 1)
 				}
