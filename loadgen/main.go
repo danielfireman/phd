@@ -88,11 +88,12 @@ func main() {
 				case <-t:
 					work <- struct{}{}
 				case pt := <-pauseChan:
-					fmt.Printf("Sleeping: %f seconds\n", pt)
-					if pt == 0 {
+					if pt < 0.001 {  // 1 millisecond
 	                                       	time.Sleep(*gcTime)
+						fmt.Printf("Sleeping: %v\n", *gcTime)
 					} else {
-						time.Sleep(time.Duration(pt) * time.Second)
+						time.Sleep(time.Duration(pt * 1000000000) * time.Nanosecond)
+						fmt.Printf("Sleeping: %v\n", time.Duration(pt * 1000000000) * time.Nanosecond)
 					}
 					// Emptying pauseChan before continue.
 					for {
@@ -160,9 +161,13 @@ func worker(client http.Client, work chan struct{}, pauseChan chan float64, suff
 					atomic.AddUint64(&tooMany, 1)
 					ra := resp.Header.Get("Retry-After")
 					if ra != "" {
-						pt, _ := strconv.ParseFloat(ra, 64)
-						pauseChan <- pt
-					}
+						pt, err := strconv.ParseFloat(ra, 64)
+						if err != nil {
+							fmt.Printf("%q\n", err)
+						} else {
+							pauseChan <- pt
+						}
+					}	
 				default:
 					atomic.AddUint64(&errs, 1)
 				}
