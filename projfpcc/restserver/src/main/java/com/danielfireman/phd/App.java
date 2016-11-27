@@ -123,11 +123,11 @@ public class App extends Jooby {
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
 		    		// Waiting until queue gets empty.
+                    long startTime = System.currentTimeMillis();
                     while (counter.finished.get() < counter.incoming.get()) {
                         Thread.sleep(10);
                     }
                     counter.gcCountForcedGC.incrementAndGet();
-                    long startTime = System.currentTimeMillis();
                     System.gc();
                     long gcTime = System.currentTimeMillis()-startTime;
                     counter.forcedGCHist.update(gcTime);
