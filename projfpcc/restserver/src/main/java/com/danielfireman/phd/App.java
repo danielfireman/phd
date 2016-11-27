@@ -37,7 +37,7 @@ public class App extends Jooby {
         AtomicBoolean doingGC = new AtomicBoolean(false);
         AtomicLong gcCountForcedGC = new AtomicLong(0);
         AtomicLong gcTimeForcedGCMillis = new AtomicLong(0);
-		Histogram forcedGCHist = new Histogram(new SlidingWindowReservoir(10));
+		Histogram forcedGCHist = new Histogram(new SlidingWindowReservoir(50));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
@@ -77,10 +77,13 @@ public class App extends Jooby {
 				}));
 
         if (System.getenv("CONTROL_GC") != null) {
+            double threshold = Double.parseDouble(System.getenv("CONTROL_GC"));
+            System.out.println("Controlling GC wih threshold: " + threshold);
             use("GET", "/numprimes/:max", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
                     Snapshot s = counter.forcedGCHist.getSnapshot();
-                    String ra = Double.toString((double)(s.getMedian() + s.getStdDev())/1000d);
+                    String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
+                    System.out.println("RA: "+ra);
                     rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                     return;
                 }
@@ -92,14 +95,15 @@ public class App extends Jooby {
                         // double checked locking
                         if (counter.doingGC.get()) {
                             Snapshot s = counter.forcedGCHist.getSnapshot();
-                            String ra = Double.toString((double)(s.getMedian() + s.getStdDev())/1000d);
+                            String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
+                            System.out.println("RA: "+ra);
                             rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                             return;
                         }
                         for (final MemoryPoolMXBean pool : counter.mem) {
                             double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
                             String name = pool.getName();
-                            if ((name.contains("Eden") || name.contains("Old")) && perc > 0.25) {
+                            if ((name.contains("Eden") || name.contains("Old")) && perc > threshold) {
                                 cause = name;
                                 counter.doingGC.set(true);
                                 doGC = true;
@@ -116,7 +120,8 @@ public class App extends Jooby {
                     counter.numReqAtLastGC.set(inc);
 
                     Snapshot s = counter.forcedGCHist.getSnapshot();
-                    String ra = Double.toString((double)(s.getMedian() + s.getStdDev())/1000d);
+                    String ra = Double.toString((double)((double)(s.getMedian() + 2*s.getStdDev())/1000.0));
+                    System.out.println("RA: "+ra);
                     rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
 
                     System.out.println("\n\nCause:" + cause + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
@@ -185,7 +190,6 @@ public class App extends Jooby {
 		List<GarbageCollectorMXBean> gcbeans = java.lang.management.ManagementFactory.getGarbageCollectorMXBeans();
 		//Install a notifcation handler for each bean
 		for (GarbageCollectorMXBean gcbean : gcbeans) {
-			System.out.println(gcbean);
 			NotificationEmitter emitter = (NotificationEmitter) gcbean;
 			//use an anonymously generated listener for this example
 			// - proper code should really use a named class
