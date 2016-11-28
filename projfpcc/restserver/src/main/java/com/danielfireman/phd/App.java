@@ -58,14 +58,6 @@ public class App extends Jooby {
             System.out.println("Controlling GC wih threshold: " + threshold);
             ExecutorService gcPool = Executors.newSingleThreadExecutor();
 
-            before((req, rsp) -> {
-                counter.incoming.incrementAndGet();
-            });
-
-            complete((req, rsp, cause) -> {
-                counter.finished.incrementAndGet();
-            });
-
             use("GET", "*", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
                     rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
@@ -131,7 +123,9 @@ public class App extends Jooby {
                     }
                 }
                 long startTime = System.currentTimeMillis();
+                counter.incoming.incrementAndGet();
                 chain.next(req, rsp);
+                counter.finished.incrementAndGet();
                 counter.requestTimeHistogram.update(System.currentTimeMillis() - startTime);
             });
         }
