@@ -262,7 +262,7 @@ public class App extends Jooby {
         long delta = System.currentTimeMillis() - lastGCStartTime;
         return Double.toString(Math.max(
                 0.2d,
-                (double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d)));
+                (double) Math.max(0, (s.getMedian() + 2*s.getStdDev() - delta) / 1000d)));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
