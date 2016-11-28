@@ -260,7 +260,7 @@ public class App extends Jooby {
 
     static String getRetryAfter(Snapshot s, long lastGCStartTime) {
         long delta = System.currentTimeMillis() - lastGCStartTime;
-        return Double.toString((double) Math.max(0, (s.getMedian() + 2*s.getStdDev() - delta) / 1000d));
+        return Double.toString((double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
