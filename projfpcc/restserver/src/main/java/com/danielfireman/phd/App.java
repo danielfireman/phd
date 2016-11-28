@@ -60,7 +60,7 @@ public class App extends Jooby {
 
             use("GET", "*", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
-                    rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
+                    rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot())).status(Status.TOO_MANY_REQUESTS)
                             .length(0)
                             .end();
                     return;
@@ -68,7 +68,7 @@ public class App extends Jooby {
                 if (counter.incoming.get() % counter.sampleRate.get() == 0) {
                     synchronized (counter) {
                         if (counter.doingGC.get()) {
-                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
+                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot())).status(Status.TOO_MANY_REQUESTS)
                                     .length(0)
                                     .end();
                             return;
@@ -79,7 +79,7 @@ public class App extends Jooby {
                                 (double) oldUsage.getUsed() / (double) oldUsage.getCommitted() > threshold) {
                             counter.doingGC.set(true);
                             counter.unavailabilityStartTime.set(System.currentTimeMillis());
-                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
+                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot())).status(Status.TOO_MANY_REQUESTS)
                                     .length(0)
                                     .end();
 
@@ -262,9 +262,8 @@ public class App extends Jooby {
         }
     }
 
-    static String getRetryAfter(Snapshot s, long lastGCStartTime) {
-        long delta = System.currentTimeMillis() - lastGCStartTime;
-        return Double.toString((double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d));
+    static String getRetryAfter(Snapshot s) {
+        return Double.toString((double) Math.max(0, (s.getMedian() + 2*s.getStdDev()) / 1000d));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
