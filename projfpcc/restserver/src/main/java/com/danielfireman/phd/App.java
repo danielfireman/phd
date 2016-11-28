@@ -75,6 +75,12 @@ public class App extends Jooby {
                 }
                 if (counter.incoming.get() % counter.sampleRate.get() == 0) {
                     synchronized (counter) {
+                        if (counter.doingGC.get()) {
+                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
+                                    .length(0)
+                                    .end();
+                            return;
+                        }
                         MemoryUsage youngUsage = counter.youngPool.getUsage();
                         MemoryUsage oldUsage = counter.oldPool.getUsage();
                         if ((double) youngUsage.getUsed() / (double) youngUsage.getCommitted() > threshold ||
