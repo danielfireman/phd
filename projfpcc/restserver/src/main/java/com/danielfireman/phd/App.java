@@ -60,7 +60,7 @@ public class App extends Jooby {
 
             use("GET", "*", (req, rsp, chain) -> {
                 if (counter.doingGC.get()) {
-                    rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot())).status(Status.TOO_MANY_REQUESTS)
+                    rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
                             .length(0)
                             .end();
                     return;
@@ -68,7 +68,7 @@ public class App extends Jooby {
                 if (counter.incoming.get() % counter.sampleRate.get() == 0) {
                     synchronized (counter) {
                         if (counter.doingGC.get()) {
-                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot())).status(Status.TOO_MANY_REQUESTS)
+                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
                                     .length(0)
                                     .end();
                             return;
@@ -79,7 +79,7 @@ public class App extends Jooby {
                                 (double) oldUsage.getUsed() / (double) oldUsage.getCommitted() > threshold) {
                             counter.doingGC.set(true);
                             counter.unavailabilityStartTime.set(System.currentTimeMillis());
-                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot())).status(Status.TOO_MANY_REQUESTS)
+                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
                                     .length(0)
                                     .end();
 
@@ -89,13 +89,8 @@ public class App extends Jooby {
                                 // The main idea is to get 1/10th of the requests that arrived since last GC and bound
                                 // this number to [10, 300].
                                 Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
-                                long inc = counter.incoming.get();
-                                long numReqLast = counter.numReqAtLastGC.get();
                                 System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
-                                counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double)(inc - numReqLast) / 10d))));
-
-                                // Updating number of requests at last GC.
-                                counter.numReqAtLastGC.set(counter.incoming.get());
+                                counter.sampleRate.set(Math.min(500, Math.max(50L, (long) ((double)counter.incoming.get()/5d))));
 
                                 // Loop waiting for the queue to get empty. Each iteration waits the median of request
                                 // processing time.
@@ -116,6 +111,8 @@ public class App extends Jooby {
 
                                 // Now we can start doing GC and attend new requests.
                                 counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
+                                counter.incoming.set(0);
+                                counter.finished.set(0);
                                 counter.doingGC.set(false);
                             });
                             return;
@@ -237,7 +234,6 @@ public class App extends Jooby {
     static class RequestCounter {
         AtomicLong incoming = new AtomicLong();
         AtomicLong finished = new AtomicLong();
-        AtomicLong numReqAtLastGC = new AtomicLong();
         AtomicLong sampleRate = new AtomicLong(10);
         MemoryPoolMXBean youngPool;
         MemoryPoolMXBean oldPool;
@@ -262,8 +258,9 @@ public class App extends Jooby {
         }
     }
 
-    static String getRetryAfter(Snapshot s) {
-        return Double.toString((double) Math.max(0, (s.getMedian() + 2*s.getStdDev()) / 1000d));
+    static String getRetryAfter(Snapshot s, long lastGCStartTime) {
+        long delta = System.currentTimeMillis() - lastGCStartTime;
+        return Double.toString((double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
