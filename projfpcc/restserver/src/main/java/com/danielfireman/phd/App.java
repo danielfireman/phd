@@ -63,48 +63,47 @@ public class App extends Jooby {
 
             complete((req, rsp, cause) -> {
                 counter.finished.incrementAndGet();
-                if (!counter.doGC.get()) {
-                    return;
-                }
                 synchronized (counter) {
-                    if (counter.doGC.get()) {
+                    if (!counter.doGC.get()) {
+                        return;
+                    } else {
                         counter.doGC.set(false);
-                        gcPool.execute(() -> {
-                            // Calculating next sample rate.
-                            // The main idea is to get 1/10th of the requests that arrived since last GC and bound
-                            // this number to [10, 300].
-                            Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
-                            long inc = counter.incoming.get();
-                            long numReqLast = counter.numReqAtLastGC.get();
-                            System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
-                            counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double)(inc - numReqLast) / 10d))));
-
-                            // Updating number of requests at last GC.
-                            counter.numReqAtLastGC.set(counter.incoming.get());
-
-                            // Loop waiting for the queue to get empty. Each iteration waits the median of request
-                            // processing time.
-                            long waitTime = (long) counter.requestTimeHistogram.getSnapshot().getMedian();
-                            while (counter.finished.get() < counter.incoming.get()) {
-                                try {
-                                    Thread.sleep(waitTime);
-                                } catch (InterruptedException ie) {
-                                    throw new RuntimeException(ie);
-                                }
-                            }
-
-                            // Finally GC.
-                            counter.gcCountForcedGC.incrementAndGet();
-                            long startTime = System.currentTimeMillis();
-                            System.gc();
-                            counter.gcTimeForcedGCMillis.addAndGet(System.currentTimeMillis() - startTime);
-
-                            // Now we can start doing GC and attend new requests.
-                            counter.doingGC.set(false);
-                            counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
-                        });
                     }
                 }
+                gcPool.execute(() -> {
+                    // Calculating next sample rate.
+                    // The main idea is to get 1/10th of the requests that arrived since last GC and bound
+                    // this number to [10, 300].
+                    Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
+                    long inc = counter.incoming.get();
+                    long numReqLast = counter.numReqAtLastGC.get();
+                    System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
+                    counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double)(inc - numReqLast) / 10d))));
+
+                    // Updating number of requests at last GC.
+                    counter.numReqAtLastGC.set(counter.incoming.get());
+
+                    // Loop waiting for the queue to get empty. Each iteration waits the median of request
+                    // processing time.
+                    long waitTime = (long) sRH.getMedian();
+                    while (counter.finished.get() < counter.incoming.get()) {
+                        try {
+                            Thread.sleep(waitTime);
+                        } catch (InterruptedException ie) {
+                            throw new RuntimeException(ie);
+                        }
+                    }
+
+                    // Finally GC.
+                    counter.gcCountForcedGC.incrementAndGet();
+                    long startTime = System.currentTimeMillis();
+                    System.gc();
+                    counter.gcTimeForcedGCMillis.addAndGet(System.currentTimeMillis() - startTime);
+
+                    // Now we can start doing GC and attend new requests.
+                    counter.doingGC.set(false);
+                    counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
+                });
             });
 
             use("GET", "*", (req, rsp, chain) -> {
@@ -123,17 +122,18 @@ public class App extends Jooby {
                                     .end();
                             return;
                         }
-                        for (final MemoryPoolMXBean pool : counter.mem) {
-                            double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
-                            if (perc > threshold) {
-                                counter.doGC.set(true);
-                                counter.doingGC.set(true);
-                                counter.unavailabilityStartTime.set(System.currentTimeMillis());
-                                System.out.println("\n\nCause:" + pool.getName() + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
-                                break;
-                            }
+                    }
+                    for (final MemoryPoolMXBean pool : counter.mem) {
+                        double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
+                        if (perc > threshold) {
+                            counter.doGC.set(true);
+                            counter.doingGC.set(true);
+                            counter.unavailabilityStartTime.set(System.currentTimeMillis());
+                            System.out.println("\n\nCause:" + pool.getName() + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
+                            break;
                         }
                     }
+
                 }
                 long startTime = System.currentTimeMillis();
                 chain.next(req, rsp);
