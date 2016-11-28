@@ -261,7 +261,7 @@ public class App extends Jooby {
     static String getRetryAfter(Snapshot s, long lastGCStartTime) {
         long delta = System.currentTimeMillis() - lastGCStartTime;
         return Double.toString(Math.max(
-                200d,
+                0.2d,
                 (double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d)));
     }
 
