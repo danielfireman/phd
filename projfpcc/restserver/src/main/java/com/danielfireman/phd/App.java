@@ -35,7 +35,7 @@ public class App extends Jooby {
     RequestCounter counter = new RequestCounter();
 
     {
-        installGCMonitoring();
+        //installGCMonitoring();
         String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
         use(new Metrics()
                 .request()
@@ -260,7 +260,9 @@ public class App extends Jooby {
 
     static String getRetryAfter(Snapshot s, long lastGCStartTime) {
         long delta = System.currentTimeMillis() - lastGCStartTime;
-        return Double.toString((double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d));
+        return Double.toString(Math.max(
+                200d,
+                (double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d)));
     }
 
     static class ForcedGCMetricSet implements MetricSet {
