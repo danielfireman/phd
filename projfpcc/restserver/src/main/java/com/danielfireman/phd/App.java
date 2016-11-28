@@ -32,8 +32,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class App extends Jooby {
 
     private static final int LOG_INTERVAL_SECS = 5;
-    static RequestCounter counter = new RequestCounter();
-    static ExecutorService gcPool = Executors.newSingleThreadExecutor();
+    RequestCounter counter = new RequestCounter();
+
     {
         installGCMonitoring();
         String suffix = System.getenv("ROUND") != null ? "_" + System.getenv("ROUND") : "";
@@ -56,6 +56,7 @@ public class App extends Jooby {
         if (System.getenv("CONTROL_GC") != null && !System.getenv("CONTROL_GC").equals("")) {
             double threshold = Double.parseDouble(System.getenv("CONTROL_GC"));
             System.out.println("Controlling GC wih threshold: " + threshold);
+            ExecutorService gcPool = Executors.newSingleThreadExecutor();
 
             before((req, rsp) -> {
                 counter.incoming.incrementAndGet();
@@ -63,47 +64,6 @@ public class App extends Jooby {
 
             complete((req, rsp, cause) -> {
                 counter.finished.incrementAndGet();
-                synchronized (counter) {
-                    if (!counter.doGC.get()) {
-                        return;
-                    } else {
-                        counter.doGC.set(false);
-                    }
-                }
-                gcPool.execute(() -> {
-                    // Calculating next sample rate.
-                    // The main idea is to get 1/10th of the requests that arrived since last GC and bound
-                    // this number to [10, 300].
-                    Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
-                    long inc = counter.incoming.get();
-                    long numReqLast = counter.numReqAtLastGC.get();
-                    System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
-                    counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double)(inc - numReqLast) / 10d))));
-
-                    // Updating number of requests at last GC.
-                    counter.numReqAtLastGC.set(counter.incoming.get());
-
-                    // Loop waiting for the queue to get empty. Each iteration waits the median of request
-                    // processing time.
-                    long waitTime = (long) sRH.getMedian();
-                    while (counter.finished.get() < counter.incoming.get()) {
-                        try {
-                            Thread.sleep(waitTime);
-                        } catch (InterruptedException ie) {
-                            throw new RuntimeException(ie);
-                        }
-                    }
-
-                    // Finally GC.
-                    counter.gcCountForcedGC.incrementAndGet();
-                    long startTime = System.currentTimeMillis();
-                    System.gc();
-                    counter.gcTimeForcedGCMillis.addAndGet(System.currentTimeMillis() - startTime);
-
-                    // Now we can start doing GC and attend new requests.
-                    counter.doingGC.set(false);
-                    counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
-                });
             });
 
             use("GET", "*", (req, rsp, chain) -> {
@@ -115,6 +75,7 @@ public class App extends Jooby {
                 }
                 if (counter.incoming.get() % counter.sampleRate.get() == 0) {
                     synchronized (counter) {
+                        //System.out.println("SampleRate: " + counter.sampleRate.get());
                         // double checked locking.
                         if (counter.doingGC.get()) {
                             rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
@@ -122,18 +83,50 @@ public class App extends Jooby {
                                     .end();
                             return;
                         }
-                    }
-                    for (final MemoryPoolMXBean pool : counter.mem) {
-                        double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
-                        if (perc > threshold) {
-                            counter.doGC.set(true);
+                        MemoryUsage youngUsage = counter.youngPool.getUsage();
+                        MemoryUsage oldUsage = counter.oldPool.getUsage();
+                        if ((double) youngUsage.getUsed() / (double) youngUsage.getCommitted() > threshold ||
+                            (double) oldUsage.getUsed() / (double) oldUsage.getCommitted() > threshold) {
                             counter.doingGC.set(true);
                             counter.unavailabilityStartTime.set(System.currentTimeMillis());
-                            System.out.println("\n\nCause:" + pool.getName() + " | Incoming: " + counter.incoming + " Finished:" + counter.finished + " SampleRate: " + counter.sampleRate.get());
-                            break;
+
+                            // This should return immediately.
+                            gcPool.execute(()-> {
+                                // Calculating next sample rate.
+                                // The main idea is to get 1/10th of the requests that arrived since last GC and bound
+                                // this number to [10, 300].
+                                Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
+                                long inc = counter.incoming.get();
+                                long numReqLast = counter.numReqAtLastGC.get();
+                                System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
+                                counter.sampleRate.set(Math.min(300, Math.max(10L, (long) ((double)(inc - numReqLast) / 10d))));
+
+                                // Updating number of requests at last GC.
+                                counter.numReqAtLastGC.set(counter.incoming.get());
+
+                                // Loop waiting for the queue to get empty. Each iteration waits the median of request
+                                // processing time.
+                                long waitTime = (long) counter.requestTimeHistogram.getSnapshot().getMedian();
+                                while (counter.finished.get() < counter.incoming.get()) {
+                                    try {
+                                        Thread.sleep(waitTime);
+                                    } catch (InterruptedException ie) {
+                                        throw new RuntimeException(ie);
+                                    }
+                                }
+
+                                // Finally GC.
+                                counter.gcCountForcedGC.incrementAndGet();
+                                long startTime = System.currentTimeMillis();
+                                System.gc();
+                                counter.gcTimeForcedGCMillis.addAndGet(System.currentTimeMillis() - startTime);
+
+                                // Now we can start doing GC and attend new requests.
+                                counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
+                                counter.doingGC.set(false);
+                            });
                         }
                     }
-
                 }
                 long startTime = System.currentTimeMillis();
                 chain.next(req, rsp);
@@ -250,9 +243,9 @@ public class App extends Jooby {
         AtomicLong finished = new AtomicLong();
         AtomicLong numReqAtLastGC = new AtomicLong();
         AtomicLong sampleRate = new AtomicLong(10);
-        List<MemoryPoolMXBean> mem = Lists.newArrayList();
+        MemoryPoolMXBean youngPool;
+        MemoryPoolMXBean oldPool;
         AtomicBoolean doingGC = new AtomicBoolean(false);
-        AtomicBoolean doGC = new AtomicBoolean(false);
         AtomicLong gcCountForcedGC = new AtomicLong(0);
         AtomicLong gcTimeForcedGCMillis = new AtomicLong(0);
         AtomicLong unavailabilityStartTime = new AtomicLong(0);
@@ -261,8 +254,13 @@ public class App extends Jooby {
 
         RequestCounter() {
             for (final MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
-                if (pool.getName().contains("Eden") || pool.getName().contains("Old")) {
-                    this.mem.add(pool);
+                if (pool.getName().contains("Eden")) {
+                    youngPool = pool;
+                    continue;
+                }
+                if (pool.getName().contains("Old")) {
+                    oldPool = pool;
+                    continue;
                 }
             }
         }
