@@ -99,8 +99,6 @@ public class App extends Jooby {
                             rsp.header("Retry-After", ra).status(Status.TOO_MANY_REQUESTS).length(0).end();
                             return;
                         }
-                        Snapshot s = counter.requestTimeHistogram.getSnapshot();
-                        System.out.println("ReqHist: " + s.getMedian() + " " + s.get95thPercentile() + " " + s.get99thPercentile());
                         for (final MemoryPoolMXBean pool : counter.mem) {
                             double perc = (double) pool.getUsage().getUsed() / (double) pool.getUsage().getCommitted();
                             String name = pool.getName();
@@ -115,6 +113,8 @@ public class App extends Jooby {
                 }
 
                 if (doGC) {
+                    Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
+                    System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
                     long startTime = System.currentTimeMillis();
                     long inc = counter.incoming.get();
                     long numReqLast = counter.numReqAtLastGC.get();
