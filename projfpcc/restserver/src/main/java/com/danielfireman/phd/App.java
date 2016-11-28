@@ -75,20 +75,15 @@ public class App extends Jooby {
                 }
                 if (counter.incoming.get() % counter.sampleRate.get() == 0) {
                     synchronized (counter) {
-                        //System.out.println("SampleRate: " + counter.sampleRate.get());
-                        // double checked locking.
-                        if (counter.doingGC.get()) {
-                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
-                                    .length(0)
-                                    .end();
-                            return;
-                        }
                         MemoryUsage youngUsage = counter.youngPool.getUsage();
                         MemoryUsage oldUsage = counter.oldPool.getUsage();
                         if ((double) youngUsage.getUsed() / (double) youngUsage.getCommitted() > threshold ||
-                            (double) oldUsage.getUsed() / (double) oldUsage.getCommitted() > threshold) {
+                                (double) oldUsage.getUsed() / (double) oldUsage.getCommitted() > threshold) {
                             counter.doingGC.set(true);
                             counter.unavailabilityStartTime.set(System.currentTimeMillis());
+                            rsp.header("Retry-After", getRetryAfter(counter.unavailabilityHist.getSnapshot(), counter.unavailabilityStartTime.get())).status(Status.TOO_MANY_REQUESTS)
+                                    .length(0)
+                                    .end();
 
                             // This should return immediately.
                             gcPool.execute(()-> {
@@ -125,6 +120,7 @@ public class App extends Jooby {
                                 counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
                                 counter.doingGC.set(false);
                             });
+                            return;
                         }
                     }
                 }
