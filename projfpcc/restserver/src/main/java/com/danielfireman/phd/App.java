@@ -42,7 +42,6 @@ public class App extends Jooby {
                 .metric("memory" + suffix, new MemoryUsageGaugeSet())
                 .metric("threads" + suffix, new ThreadStatesGaugeSet())
                 .metric("gc" + suffix, new GarbageCollectorMetricSet())
-                .metric("fgc" + suffix, new ForcedGCMetricSet(counter))
                 .metric("cpu" + suffix, new CpuInfoGaugeSet())
                 .reporter(registry -> {
                     CsvReporter reporter = CsvReporter.forRegistry(registry)
@@ -87,10 +86,8 @@ public class App extends Jooby {
                             gcPool.execute(()-> {
                                 // Calculating next sample rate.
                                 // The main idea is to get 1/10th of the requests that arrived since last GC and bound
-                                // this number to [10, 300].
-                                Snapshot sRH = counter.requestTimeHistogram.getSnapshot();
-                                System.out.println("ReqHist: " + sRH.getMedian() + " " + sRH.get95thPercentile() + " " + sRH.get99thPercentile());
-                                counter.sampleRate.set(Math.min(500, Math.max(50L, (long) ((double)counter.incoming.get()/5d))));
+                                // this number to [40, 400].
+                                counter.sampleRate.set(Math.min(400L, Math.max(40L, (long) ((double)counter.incoming.get()/5d))));
 
                                 // Loop waiting for the queue to get empty. Each iteration waits the median of request
                                 // processing time.
@@ -104,13 +101,12 @@ public class App extends Jooby {
                                 }
 
                                 // Finally GC.
-                                counter.gcCountForcedGC.incrementAndGet();
-                                long startTime = System.currentTimeMillis();
                                 System.gc();
-                                counter.gcTimeForcedGCMillis.addAndGet(System.currentTimeMillis() - startTime);
 
                                 // Now we can start doing GC and attend new requests.
                                 counter.unavailabilityHist.update(System.currentTimeMillis() - counter.unavailabilityStartTime.get());
+
+                                // The idea here is to have another full window of requests after a GC.
                                 counter.incoming.set(0);
                                 counter.finished.set(0);
                                 counter.doingGC.set(false);
@@ -238,8 +234,6 @@ public class App extends Jooby {
         MemoryPoolMXBean youngPool;
         MemoryPoolMXBean oldPool;
         AtomicBoolean doingGC = new AtomicBoolean(false);
-        AtomicLong gcCountForcedGC = new AtomicLong(0);
-        AtomicLong gcTimeForcedGCMillis = new AtomicLong(0);
         AtomicLong unavailabilityStartTime = new AtomicLong(0);
         Histogram unavailabilityHist = new Histogram(new SlidingWindowReservoir(10));
         Histogram requestTimeHistogram = new Histogram(new SlidingWindowReservoir(300));
@@ -261,21 +255,5 @@ public class App extends Jooby {
     static String getRetryAfter(Snapshot s, long lastGCStartTime) {
         long delta = System.currentTimeMillis() - lastGCStartTime;
         return Double.toString((double) Math.max(0, (s.getMedian() + s.getStdDev() - delta) / 1000d));
-    }
-
-    static class ForcedGCMetricSet implements MetricSet {
-        private final RequestCounter counter;
-
-        ForcedGCMetricSet(RequestCounter counter) {
-            this.counter = counter;
-        }
-
-        @Override
-        public Map<String, Metric> getMetrics() {
-            final Map<String, Metric> gauges = new HashMap<>();
-            gauges.put("count", (Gauge<Long>) () -> counter.gcCountForcedGC.get());
-            gauges.put("time", (Gauge<Long>) () -> counter.gcTimeForcedGCMillis.get());
-            return gauges;
-        }
     }
 }
