@@ -1,10 +1,12 @@
 package com.danielfireman.phd;
 
-import com.codahale.metrics.*;
+import com.codahale.metrics.CsvReporter;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.SlidingWindowReservoir;
+import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
-import com.google.common.collect.Lists;
 import com.sun.management.GarbageCollectionNotificationInfo;
 import org.jooby.Jooby;
 import org.jooby.Results;
@@ -20,7 +22,6 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -82,19 +83,17 @@ public class App extends Jooby {
                                     .length(0)
                                     .end();
 
-                            // This should return immediately.
+                            // This should return immediately. We don't want to block inside the synchronized block.
                             gcPool.execute(()-> {
                                 // Calculating next sample rate.
                                 // The main idea is to get 1/10th of the requests that arrived since last GC and bound
                                 // this number to [40, 400].
                                 counter.sampleRate.set(Math.min(400L, Math.max(40L, (long) ((double)counter.incoming.get()/5d))));
 
-                                // Loop waiting for the queue to get empty. Each iteration waits the median of request
-                                // processing time.
-                                long waitTime = (long) counter.requestTimeHistogram.getSnapshot().getMedian();
+                                // Loop waiting for the queue to get empty.
                                 while (counter.finished.get() < counter.incoming.get()) {
                                     try {
-                                        Thread.sleep(waitTime);
+                                        Thread.sleep(50);
                                     } catch (InterruptedException ie) {
                                         throw new RuntimeException(ie);
                                     }
@@ -115,11 +114,9 @@ public class App extends Jooby {
                         }
                     }
                 }
-                long startTime = System.currentTimeMillis();
                 counter.incoming.incrementAndGet();
                 chain.next(req, rsp);
                 counter.finished.incrementAndGet();
-                counter.requestTimeHistogram.update(System.currentTimeMillis() - startTime);
             });
         }
 
@@ -236,7 +233,6 @@ public class App extends Jooby {
         AtomicBoolean doingGC = new AtomicBoolean(false);
         AtomicLong unavailabilityStartTime = new AtomicLong(0);
         Histogram unavailabilityHist = new Histogram(new SlidingWindowReservoir(10));
-        Histogram requestTimeHistogram = new Histogram(new SlidingWindowReservoir(300));
 
         RequestCounter() {
             for (final MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
