@@ -132,6 +132,7 @@ public class App extends Jooby {
             }
 
             long startTime = System.currentTimeMillis();
+            Thread.sleep((long)(50 * Math.random()));
             long max = req.param("max").longValue();
             long count = 0;
             for (long i = 3; i <= max; i++) {
@@ -143,6 +144,7 @@ public class App extends Jooby {
                     count++;
                 }
             }
+            Thread.sleep((long)(50 * Math.random()));
             long elapsed = System.currentTimeMillis() - startTime;
             return Results.ok(count + "," + elapsed);
         });
