@@ -126,6 +126,9 @@ public class App extends Jooby {
         });
 
         get("/numprimes/:max", (req) -> {
+            // Allocate some memory.
+            byte[] array = new byte[1024];
+
             long startTime = System.currentTimeMillis();
             long max = req.param("max").longValue();
             long count = 0;
