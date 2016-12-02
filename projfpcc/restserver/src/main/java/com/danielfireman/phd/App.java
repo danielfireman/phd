@@ -146,7 +146,7 @@ public class App extends Jooby {
             long elapsed = System.currentTimeMillis() - startTime;
             // The request could be too fast. Lets double it. The elapsed time sent to the client is not used
             // anywhere.
-            Thread.sleep(elapsed);
+            Thread.sleep(elapsed/2);
 
             return Results.ok(count + "," + elapsed);
         });
