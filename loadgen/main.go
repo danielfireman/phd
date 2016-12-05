@@ -137,6 +137,8 @@ func main() {
 					io.Copy(ioutil.Discard, resp.Body)
 					resp.Body.Close()
 				}
+				close(pauseChan)
+				close(work)
 				return
 			}
 		} else {
