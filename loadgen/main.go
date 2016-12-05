@@ -132,14 +132,12 @@ func main() {
 				increaseLoadFinishTime = time.Now()
 			}
 			if increaseLoadFinishTime.Add(*keepDuration).Before(time.Now()) {
-				close(work)
-				close(pauseChan)
 				resp, err := http.Get(*clientAddr + quitSuffix)
 				if err == nil {
 					io.Copy(ioutil.Discard, resp.Body)
 					resp.Body.Close()
 				}
-				return
+				os.Exit(0)
 			}
 		} else {
 			qps += *stepSize
