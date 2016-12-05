@@ -20,7 +20,7 @@ SERVER=${11}
 for i in `seq 1 ${NUM_ROUNDS}`
 do
     if [ "${NUM_ROUNDS}" -gt "1" ]; then
-	    sleep 1.5m
+	    sleep 10s
 	fi
 	./loadgen \
 --num_warmup_steps=${WARMUP_STEPS} \
