@@ -137,7 +137,7 @@ func main() {
 					io.Copy(ioutil.Discard, resp.Body)
 					resp.Body.Close()
 				}
-				os.Exit(0)
+				return
 			}
 		} else {
 			qps += *stepSize
