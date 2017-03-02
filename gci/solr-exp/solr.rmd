@@ -18,10 +18,10 @@ require(ggplot2)
 require(dplyr)
 
 COLOR_BLIND_PALETTE <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-CINT_SECS <- 1
-START_OFFSET <- 120/CINT_SECS
+CINT_SECS <- 2
+START_OFFSET <- 180/CINT_SECS
 END_OFFSET <- 60/CINT_SECS
-EXP_ID <- "poisson_1"
+EXP_ID <- "nogci_optgc_poisson_1"
 CHART_TEXT_SIZE <- 7
 LEGEND_TEXT_SIZE <- 5
 
@@ -35,10 +35,10 @@ print(paste("Experiment ID:", EXP_ID))
 ```
 
 ```{r}
-tp <- read.csv(get_fname("tp"))
+tp <- read.csv(get_fname("tp.200"))
 tp <- tp[(START_OFFSET+1):(nrow(tp)-END_OFFSET),]
 tp["tsrange"] <- c(NA, (tp$ts[2:nrow(tp)] - tp$ts[1:(nrow(tp)-1)])/1000)
-tp["value"] <- c(NA, (tp$count[2:nrow(tp)] - tp$count[1:(nrow(tp)-1)]) / tp$tsrange[2:nrow(tp)])
+tp["value"] <- c(NA, tp$count[2:nrow(tp)] / tp$tsrange[2:nrow(tp)])
 
 plotThroughput <- function(df) {
   startTime <- df$ts[1]-(df$ts[2]-df$ts[1])
@@ -61,7 +61,7 @@ plotThroughput(tp[2:nrow(tp),])  # Ignoring first line.
 ```
 
 ```{r}
-latency <- read.csv(get_fname("latency"))
+latency <- read.csv(get_fname("latency.200"))
 colnames(latency) <- c("ts", "p50", "p90", "p99", "p999")
 latency <- latency %>% filter(p999 > 0 & p90 > 0 & p99 > 0)  # Getting rid of noise.
 latency <- latency[(START_OFFSET + 1):(nrow(latency) - END_OFFSET),]
@@ -73,6 +73,7 @@ plotLatency <- function(df) {
       geom_line(aes(x = (ts-startTime)/1000, y = p50, color = "50")) +
       geom_line(aes(x = (ts-startTime)/1000, y = p90, color = "90")) +
       geom_line(aes(x = (ts-startTime)/1000, y = p99, color = "99")) +
+      geom_line(aes(x = (ts-startTime)/1000, y = p999, color = "999")) +
       ylab("Latency (ms)") +
       xlab("Time (s)") +
       scale_color_manual(values = COLOR_BLIND_PALETTE) +
